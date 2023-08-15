@@ -71,7 +71,7 @@ impl Database for PostgresDatabase {
         .bind(uuid)
         .bind(event_type.name.clone())
         .bind(event_type.description.clone())
-        .bind(event_type.payload_definition.clone())
+        .bind(event_type.payload_definition.to_string())
         .execute(&self.pool)
         .await
         {

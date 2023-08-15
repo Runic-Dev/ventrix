@@ -4,7 +4,7 @@ use crate::common::types::VentrixEvent;
 use crate::infrastructure::persistence::Database;
 use actix_web::{web, HttpResponse};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
+use serde_json::{json, Value};
 
 #[tracing::instrument(
     name = "Registering new event type",
@@ -19,7 +19,6 @@ pub async fn register_new_event_type(
     database: web::Data<Box<dyn Database>>,
 ) -> HttpResponse {
     let database = database.get_ref();
-    let event_type_to_register = event_type_to_register.into_inner();
     let database_response = database.register_event_type(&event_type_to_register).await;
 
     match database_response {
@@ -104,10 +103,17 @@ pub async fn publish_event(
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+pub struct NewEventTypeRequest {
+    pub name: String,
+    pub description: String,
+    pub payload_definition: Value,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct NewEventType {
     pub name: String,
     pub description: String,
-    pub payload_definition: String,
+    pub payload_definition: Value,
 }
 
 #[derive(Debug, Deserialize)]
