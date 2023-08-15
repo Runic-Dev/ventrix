@@ -1,8 +1,7 @@
-use std::collections::VecDeque;
+use serde::Deserialize;
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize)]
 pub struct VentrixEvent {
     pub event_type: String,
     pub payload: String,
 }
-pub type VentrixQueue = VecDeque<VentrixEvent>;

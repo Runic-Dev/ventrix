@@ -1,17 +1,16 @@
 use std::{net::TcpListener, sync::Mutex};
 
-use actix_web::{dev::Server, web, App, HttpServer};
+use actix_web::{dev::Server, web::{self, Data}, App, HttpServer};
 use sqlx::PgPool;
 use tracing_actix_web::TracingLogger;
 
 use crate::{
-    routes::{events, health_check, services},
-    types::VentrixQueue,
+    routes::{events, health_check, services, queue}, queue::VentrixQueue,
 };
 
 pub fn run(listener: TcpListener, db_pool: PgPool) -> Result<Server, std::io::Error> {
     let db_pool = web::Data::new(db_pool);
-    let ventrix_queue = web::Data::new(Mutex::new(VentrixQueue::new()));
+    let ventrix_queue = web::Data::new(VentrixQueue::default());
 
     let server = HttpServer::new(move || {
         App::new()
@@ -26,11 +25,12 @@ pub fn run(listener: TcpListener, db_pool: PgPool) -> Result<Server, std::io::Er
                     )
                     .service(
                         web::scope("/events")
-                            .route("/register", web::post().to(events::register_new_event_type)),
+                            .route("/register", web::post().to(events::register_new_event_type))
+                            .route("/publish", web::post().to(queue::enqueue_event))
                     ),
             )
             .app_data(db_pool.clone())
-            .app_data(ventrix_queue.clone())
+            .app_data(Data::clone(&ventrix_queue))
     })
     .listen(listener)?
     .run();

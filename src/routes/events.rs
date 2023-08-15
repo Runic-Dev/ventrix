@@ -41,11 +41,6 @@ pub async fn register_new_event_type(
     }
 }
 
-// #[tracing::instrument(
-//     name = "Delete a registered event type"
-// )]
-// pub async fn delete_event_type() -> 
-
 #[derive(Debug, Deserialize)]
 pub struct NewEventType {
     name: String,
