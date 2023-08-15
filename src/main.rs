@@ -1,14 +1,16 @@
+mod models;
+
 use secrecy::ExposeSecret;
 use sqlx::PgPool;
 use std::net::TcpListener;
 use ventrix::configuration::get_configuration;
 use ventrix::startup::run;
-use ventrix::telemetry::{get_subscriber, init_subscriber};
+use ventrix::telemetry::{get_subscriber, init_tracing_subscriber};
 
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {
     let subscriber = get_subscriber("ventrix".into(), "info".into(), std::io::stdout);
-    init_subscriber(subscriber);
+    init_tracing_subscriber(subscriber);
 
     let configuration = get_configuration().expect("Failed to read configuration");
 

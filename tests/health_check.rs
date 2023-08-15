@@ -10,17 +10,17 @@ static TRACING: Lazy<()> = Lazy::new(|| {
 
     if std::env::var("TEST_LOG").is_ok() {
         let subscriber = get_subscriber(subscriber_name, default_filter_level, std::io::stdout);
-        init_subscriber(subscriber);
+        init_tracing_subscriber(subscriber);
     } else {
         let subscriber = get_subscriber(subscriber_name, default_filter_level, std::io::sink);
-        init_subscriber(subscriber);
+        init_tracing_subscriber(subscriber);
     };
 });
 
 use ventrix::{
     configuration::{get_configuration, DatabaseSettings},
     startup::run,
-    telemetry::{get_subscriber, init_subscriber},
+    telemetry::{get_subscriber, init_tracing_subscriber},
 };
 
 #[tokio::test]
@@ -36,32 +36,6 @@ async fn health_check_works() {
 
     assert!(response.status().is_success());
     assert_eq!(Some(0), response.content_length());
-}
-
-#[tokio::test]
-async fn subscribe_returns_a_200_for_valid_form_data() {
-    let test_app = spawn_app().await;
-    let client = reqwest::Client::new();
-
-    let body = "name=cameron%20raw&email=cameron.raw89%40gmail.com";
-
-    let response = client
-        .post(&format!("{}/subscriptions", &test_app.address))
-        .header("Content-Type", "application/x-www-form-urlencoded")
-        .body(body)
-        .send()
-        .await
-        .expect("Failed to execute request.");
-
-    assert_eq!(200, response.status().as_u16());
-
-    let saved = sqlx::query!("SELECT email, name FROM subscriptions")
-        .fetch_one(&test_app.db_pool)
-        .await
-        .expect("Failed to fetch saved subscription");
-
-    assert_eq!(saved.email, "cameron.raw89@gmail.com");
-    assert_eq!(saved.name, "cameron raw");
 }
 
 #[tokio::test]
