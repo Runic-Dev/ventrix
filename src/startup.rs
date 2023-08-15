@@ -23,9 +23,9 @@ pub async fn run(
 
     let (sender, receiver): (Sender<VentrixEvent>, Receiver<VentrixEvent>) =
         tokio::sync::mpsc::channel::<VentrixEvent>(50);
-    let ventrix_queue = web::Data::new(VentrixQueue::new(sender).await);
-
-    tokio::spawn(event_processor(receiver));
+    let ventrix_queue = VentrixQueue::new(sender).await;
+    ventrix_queue.start_event_processor(receiver);
+    let ventrix_queue = web::Data::new(ventrix_queue);
 
     let server = HttpServer::new(move || {
         App::new()
@@ -51,10 +51,4 @@ pub async fn run(
     .run();
 
     Ok(server)
-}
-
-async fn event_processor(mut receiver: Receiver<VentrixEvent>) {
-    while let Some(event) = receiver.recv().await {
-        tracing::info!("Processing event: {}", event.event_type);
-    }
 }
