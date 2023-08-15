@@ -6,6 +6,7 @@ use serde::Deserialize;
 use crate::helpers::parsers::{parse_req_string, parse_req_uuid};
 
 #[derive(Debug)]
+#[derive(Eq, Hash, PartialEq)]
 pub struct Service {
     pub id: uuid::Uuid,
     pub name: String,

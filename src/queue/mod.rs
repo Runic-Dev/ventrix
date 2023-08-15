@@ -52,11 +52,36 @@ impl VentrixQueue {
                 for service in listening_services {
                     let body = VentrixEvent {
                         event_type: event.event_type.clone(),
-                        payload: event.payload.clone()
+                        payload: event.payload.clone(),
                     };
-                    client.post(service.endpoint.clone()).json::<VentrixEvent>(&body);
+                    client
+                        .post(service.endpoint.clone())
+                        .json::<VentrixEvent>(&body);
                 }
             }
         }
     }
+
+    pub async fn listen_to_event(
+        &self,
+        service: Service,
+        event_type: String,
+    ) -> ListenToEventResult {
+        let mut event_map_lock = self.event_type_to_services.lock().await;
+
+        if let Some(registered_services) = event_map_lock.get_mut(&event_type) {
+            registered_services.insert(service);
+            ListenToEventResult::Existed
+        } else {
+            let mut registered_services = HashSet::<Service>::new();
+            registered_services.insert(service);
+            event_map_lock.insert(event_type, registered_services);
+            ListenToEventResult::NewEntry
+        }
+    }
+}
+
+enum ListenToEventResult {
+    NewEntry,
+    Existed,
 }

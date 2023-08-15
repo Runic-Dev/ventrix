@@ -34,6 +34,19 @@ pub async fn register_new_event_type(
     }
 }
 
+#[tracing::instrument(
+    name = "Listening to event type",
+    fields (
+    )
+)]
+pub async fn listen_to_event(
+    listen_request: web::Json<ListenToEvent>,
+    queue: web::Data<VentrixQueue>,
+) -> HttpResponse {
+    let listen_request = listen_request.into_inner();
+    todo!()
+}
+
 #[tracing::instrument(name = "Publishing event")]
 pub async fn publish_event(
     event: web::Json<VentrixEvent>,
@@ -60,3 +73,12 @@ pub struct NewEventType {
     pub description: String,
     pub payload_description: String,
 }
+
+#[derive(Debug, Deserialize)]
+pub struct ListenToEvent {
+    pub service_name: String,
+    pub event_type: String,
+}
+
+
+
