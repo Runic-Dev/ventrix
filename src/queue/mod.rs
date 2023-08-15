@@ -1,8 +1,8 @@
+use crate::{models::service::Service, types::VentrixEvent};
 use std::collections::VecDeque;
 
 use tokio::sync::Mutex;
 
-use crate::{types::VentrixEvent, models::service::Service};
 
 #[derive(Debug, Default)]
 pub struct VentrixQueue {

@@ -6,3 +6,12 @@ pub struct VentrixEvent {
     pub payload: String,
 }
 
+pub struct ServiceDetails {
+    endpoint: String
+}
+
+pub struct EventTypeDetails {
+    description: String,
+    payload_def: String
+}
+

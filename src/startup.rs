@@ -1,15 +1,14 @@
-use std::{net::TcpListener, sync::Mutex};
+use std::{net::TcpListener, collections::HashMap};
 
 use actix_web::{dev::Server, web::{self, Data}, App, HttpServer};
-use sqlx::PgPool;
 use tracing_actix_web::TracingLogger;
 
 use crate::{
-    routes::{events, health_check, services, queue}, queue::VentrixQueue,
+    routes::{events, health_check, services, queue}, queue::VentrixQueue, database::DatabaseOption,
 };
 
-pub fn run(listener: TcpListener, db_pool: PgPool) -> Result<Server, std::io::Error> {
-    let db_pool = web::Data::new(db_pool);
+pub fn run(listener: TcpListener, database: DatabaseOption, _feature_flags: HashMap<&str, bool>) -> Result<Server, std::io::Error> {
+    let database = web::Data::new(database);
     let ventrix_queue = web::Data::new(VentrixQueue::default());
 
     let server = HttpServer::new(move || {
@@ -29,7 +28,7 @@ pub fn run(listener: TcpListener, db_pool: PgPool) -> Result<Server, std::io::Er
                             .route("/publish", web::post().to(queue::enqueue_event))
                     ),
             )
-            .app_data(db_pool.clone())
+            .app_data(database.clone())
             .app_data(Data::clone(&ventrix_queue))
     })
     .listen(listener)?
