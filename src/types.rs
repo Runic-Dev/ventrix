@@ -8,14 +8,12 @@ pub struct VentrixEvent {
 
 #[derive(Debug, Serialize, Clone)]
 pub struct ServiceDetails {
-    endpoint: String,
+    pub endpoint: String,
 }
 
 impl ServiceDetails {
     pub fn new(endpoint: String) -> Self {
-        Self {
-            endpoint
-        }
+        Self { endpoint }
     }
 }
 

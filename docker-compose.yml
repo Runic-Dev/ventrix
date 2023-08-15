@@ -1,0 +1,15 @@
+version: '3'
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+  vinnie:
+    image: "vinnie_service"
+    ports:
+      - "8081:8081"
+  viktor:
+    image: "viktor_service"
+    ports:
+      - "8082:8082"
+

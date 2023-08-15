@@ -1,27 +1,20 @@
-use std::future::{self, Ready};
+use std::{
+    fmt::Display,
+    future::{self, Ready},
+};
 
+use crate::helpers::parsers::parse_req_string;
 use actix_web::{dev::Payload, FromRequest, HttpRequest};
 use serde::Deserialize;
 
-use crate::helpers::parsers::{parse_req_string, parse_req_uuid};
-
-#[derive(Debug)]
-#[derive(Eq, Hash, PartialEq)]
+#[derive(Debug, Eq, Hash, PartialEq, Clone, sqlx::FromRow, Deserialize)]
 pub struct Service {
-    pub id: uuid::Uuid,
     pub name: String,
     pub endpoint: String,
 }
 
 impl Service {
     fn parse_from_req(req: &HttpRequest) -> Result<Self, actix_web::Error> {
-        let service_id = match parse_req_uuid(req, "service_id") {
-            Ok(service_id) => service_id,
-            Err(err) => {
-                println!("Failed to parse service_id from request: {:?}", err);
-                return Err(err);
-            }
-        };
         let service_name = match parse_req_string(req, "service_name") {
             Ok(service_name) => service_name,
             Err(err) => {
@@ -38,10 +31,15 @@ impl Service {
         };
 
         Ok(Service {
-            id: service_id,
             name: service_name,
             endpoint: service_url,
         })
+    }
+}
+
+impl Display for Service {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{{ name: {}, endpoint: {}}}", self.name, self.endpoint)
     }
 }
 

@@ -54,9 +54,25 @@ impl VentrixQueue {
                         event_type: event.event_type.clone(),
                         payload: event.payload.clone(),
                     };
-                    client
+                    let response = client
                         .post(service.endpoint.clone())
-                        .json::<VentrixEvent>(&body);
+                        .json::<VentrixEvent>(&body)
+                        .send()
+                        .await;
+
+                    if response.is_ok() {
+                        tracing::info!(
+                            "Event {} was sent to Service {} successfully",
+                            event.event_type,
+                            service.name
+                        )
+                    } else {
+                        tracing::warn!(
+                            "Event {} failed to send to Service {}",
+                            event.event_type,
+                            service.name
+                        )
+                    }
                 }
             }
         }
@@ -64,24 +80,24 @@ impl VentrixQueue {
 
     pub async fn listen_to_event(
         &self,
-        service: Service,
-        event_type: String,
+        service: &Service,
+        event_type: &String,
     ) -> ListenToEventResult {
         let mut event_map_lock = self.event_type_to_services.lock().await;
 
-        if let Some(registered_services) = event_map_lock.get_mut(&event_type) {
-            registered_services.insert(service);
+        if let Some(registered_services) = event_map_lock.get_mut(event_type) {
+            registered_services.insert(service.clone());
             ListenToEventResult::Existed
         } else {
             let mut registered_services = HashSet::<Service>::new();
-            registered_services.insert(service);
-            event_map_lock.insert(event_type, registered_services);
+            registered_services.insert(service.clone());
+            event_map_lock.insert(event_type.clone(), registered_services);
             ListenToEventResult::NewEntry
         }
     }
 }
 
-enum ListenToEventResult {
+pub enum ListenToEventResult {
     NewEntry,
     Existed,
 }

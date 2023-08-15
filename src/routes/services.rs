@@ -1,59 +1,55 @@
 use actix_web::{web, HttpResponse};
 use serde_json::json;
-use sqlx::PgPool;
-use tracing::Instrument;
 
-use crate::{models::service::{RegisterServiceRequest, Service}, database::Database};
+use crate::{database::Database, models::service::Service, types::ServiceDetails};
+
+use super::DeleteServiceRequest;
 
 #[tracing::instrument(
     name = "Registering a new service",
     fields(
-        name = %service_to_register.name,
-        url = %service_to_register.endpoint
+        name = %service.name,
+        url = %service.endpoint
     )
 )]
 pub async fn register_service(
-    service_to_register: web::Json<RegisterServiceRequest>,
+    service: web::Json<Service>,
     database: web::Data<Box<dyn Database>>,
 ) -> HttpResponse {
-    match database.register_service(service_to_register).await {
-        Ok((name, details)) => {
+    let service = service.into_inner();
+    match database.register_service(&service).await {
+        Ok(_) => {
             let response = json!({
-                "name": name,
-                "service_details": details
-            }).to_string();
+                "name": service.name,
+                "service_details": ServiceDetails {
+                    endpoint: service.endpoint
+                }
+            })
+            .to_string();
             HttpResponse::Created().json(response)
-        },
-        Err(err) => {
-            HttpResponse::BadRequest().json(err.to_string())
         }
+        Err(err) => HttpResponse::BadRequest().json(err.to_string()),
     }
 }
 
 #[tracing::instrument(
     name = "Removing a service",
     fields(
-        id = %service_to_remove.id,
-        name = %service_to_remove.name,
-        url = %service_to_remove.endpoint
+        name = %delete_service_req.name,
     )
 )]
-pub async fn remove_service(service_to_remove: Service, pool: web::Data<PgPool>) -> HttpResponse {
-    let query_span = tracing::info_span!("Deleting service");
-    match sqlx::query!(
-        r#"
-        DELETE from services WHERE id = $1
-        "#,
-        service_to_remove.id
-    )
-    .execute(pool.get_ref())
-    .instrument(query_span)
-    .await
-    {
-        Ok(_) => HttpResponse::Ok().finish(),
-        Err(err) => {
-            tracing::error!("Failed to execute query: {:?}", err);
-            HttpResponse::InternalServerError().finish()
+pub async fn remove_service(
+    delete_service_req: web::Json<DeleteServiceRequest>,
+    database: web::Data<Box<dyn Database>>,
+) -> HttpResponse {
+    match database.remove_service(&delete_service_req.name).await {
+        Ok(_) => {
+            let response = json!({
+                "message": format!("Record successfully deleted for service: {}", delete_service_req.name)
+            })
+            .to_string();
+            HttpResponse::NoContent().json(response)
         }
+        Err(err) => HttpResponse::InternalServerError().json(err.to_string()),
     }
 }

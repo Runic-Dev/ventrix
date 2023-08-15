@@ -41,7 +41,8 @@ pub async fn run(
                     .service(
                         web::scope("/events")
                             .route("/register", web::post().to(events::register_new_event_type))
-                            .route("/publish", web::post().to(events::publish_event)),
+                            .route("/publish", web::post().to(events::publish_event))
+                            .route("/listen", web::post().to(events::listen_to_event)),
                     ),
             )
             .app_data(Data::clone(&database))

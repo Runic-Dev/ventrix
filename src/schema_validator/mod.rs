@@ -1,7 +1,7 @@
 use serde_json::from_str;
 use valico::json_schema;
 
-pub fn payload_is_valid(payload: &String, schema: &String) -> bool {
+pub fn payload_is_valid(payload: &str, schema: &str) -> bool {
     let payload_as_obj = match from_str(payload) {
         Ok(payload_obj) => payload_obj,
         Err(err) => {

@@ -3,7 +3,9 @@ use sqlx::PgPool;
 use std::collections::HashMap;
 use std::net::TcpListener;
 use ventrix::configuration::get_configuration;
-use ventrix::database::{InMemoryDatabase, PostgresDatabase, Database};
+use ventrix::database::inmemory::InMemoryDatabase;
+use ventrix::database::postgres::PostgresDatabase;
+use ventrix::database::Database;
 use ventrix::startup::run;
 use ventrix::telemetry::{get_subscriber, init_tracing_subscriber};
 
@@ -28,7 +30,7 @@ async fn main() -> Result<(), std::io::Error> {
                 Box::<InMemoryDatabase>::default()
             }
         }
-        None => Box::<InMemoryDatabase>::default()
+        None => Box::<InMemoryDatabase>::default(),
     };
 
     let address = format!(

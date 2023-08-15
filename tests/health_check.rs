@@ -90,6 +90,7 @@ async fn spawn_app() -> TestApp {
         Box::new(PostgresDatabase::new(pool.clone())),
         feature_flags,
     )
+    .await
     .expect("Failed to bind address");
     let _ = tokio::spawn(server).await;
 
