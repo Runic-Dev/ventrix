@@ -1,8 +1,8 @@
-use actix_web::{HttpResponse, web};
+use actix_web::{web, HttpResponse};
 use serde::Deserialize;
-use sqlx::PgPool;
-use tracing::Instrument;
-use uuid::Uuid;
+use serde_json::json;
+
+use crate::database::Database;
 
 #[tracing::instrument(
     name = "Registering new event type",
@@ -14,38 +14,30 @@ use uuid::Uuid;
 )]
 pub async fn register_new_event_type(
     event_type_to_register: web::Json<NewEventType>,
-    pool: web::Data<PgPool>
+    database: web::Data<Box<dyn Database>>,
 ) -> HttpResponse {
+    let database = database.get_ref();
+    let database_response = database
+        .register_event_type(event_type_to_register.into_inner())
+        .await;
 
-    let uuid = Uuid::new_v4();
-    let query_span = tracing::info_span!("Saving new event type");
-    match sqlx::query!(
-        r#"
-        INSERT INTO event_types (id, name, description, payload_desc)
-        VALUES ($1, $2, $3, $4)
-        "#,
-        uuid,
-        event_type_to_register.name,
-        event_type_to_register.description,
-        event_type_to_register.payload_description
-    )
-    .execute(pool.get_ref())
-    .instrument(query_span)
-    .await
-    {
-        Ok(_) => HttpResponse::Ok().finish(),
+    match database_response {
+        Ok((name, details)) => {
+            let json_response = json!({
+                "name": name,
+                "event_type_details": details
+            }).to_string();
+            HttpResponse::Created().json(json_response)
+        },
         Err(err) => {
-            tracing::error!("Failed to execute query: {:?}", err);
-            HttpResponse::InternalServerError().finish()
+            HttpResponse::BadRequest().json(err.to_string())
         }
     }
 }
 
 #[derive(Debug, Deserialize)]
 pub struct NewEventType {
-    name: String,
-    description: String,
-    payload_description: String
+    pub name: String,
+    pub description: String,
+    pub payload_description: String,
 }
-
-

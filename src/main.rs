@@ -2,8 +2,8 @@ use secrecy::ExposeSecret;
 use sqlx::PgPool;
 use std::collections::HashMap;
 use std::net::TcpListener;
-use ventrix::database::{DatabaseOption, PostgresDatabase, InMemoryDatabase};
 use ventrix::configuration::get_configuration;
+use ventrix::database::{InMemoryDatabase, PostgresDatabase, Database};
 use ventrix::startup::run;
 use ventrix::telemetry::{get_subscriber, init_tracing_subscriber};
 
@@ -16,18 +16,19 @@ async fn main() -> Result<(), std::io::Error> {
 
     let configuration = get_configuration().expect("Failed to read configuration");
 
-    let database = match feature_flags.get("persistence") {
+    let database: Box<dyn Database> = match feature_flags.get("persistence") {
         Some(persistence_true) => {
             if *persistence_true {
-            let pool =
-                PgPool::connect_lazy(configuration.database.connection_string().expose_secret())
-                    .expect("Failed to connect to Postgres");
-                DatabaseOption::Postgres(PostgresDatabase::new(pool))
+                let pool = PgPool::connect_lazy(
+                    configuration.database.connection_string().expose_secret(),
+                )
+                .expect("Failed to connect to Postgres");
+                Box::new(PostgresDatabase::new(pool))
             } else {
-                DatabaseOption::InMemory(InMemoryDatabase::default())
+                Box::<InMemoryDatabase>::default()
             }
         }
-        None => DatabaseOption::InMemory(InMemoryDatabase::default()),
+        None => Box::<InMemoryDatabase>::default()
     };
 
     let address = format!(

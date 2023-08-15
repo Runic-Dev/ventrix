@@ -34,4 +34,3 @@ pub fn parse_req_string(req: &HttpRequest, param_name: &str) -> Result<String, a
         }
     }
 }
-

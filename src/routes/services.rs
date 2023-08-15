@@ -1,9 +1,9 @@
 use actix_web::{web, HttpResponse};
+use serde_json::json;
 use sqlx::PgPool;
 use tracing::Instrument;
-use uuid::Uuid;
 
-use crate::models::service::{Service, RegisterServiceRequest};
+use crate::{models::service::{RegisterServiceRequest, Service}, database::Database};
 
 #[tracing::instrument(
     name = "Registering a new service",
@@ -14,27 +14,18 @@ use crate::models::service::{Service, RegisterServiceRequest};
 )]
 pub async fn register_service(
     service_to_register: web::Json<RegisterServiceRequest>,
-    pool: web::Data<PgPool>,
+    database: web::Data<Box<dyn Database>>,
 ) -> HttpResponse {
-    let uuid = Uuid::new_v4();
-    let query_span = tracing::info_span!("Saving new service");
-    match sqlx::query!(
-        r#"
-        INSERT INTO services (id, name, url)
-        VALUES ($1, $2, $3)
-        "#,
-        uuid,
-        service_to_register.name,
-        service_to_register.endpoint
-    )
-    .execute(pool.get_ref())
-    .instrument(query_span)
-    .await
-    {
-        Ok(_) => HttpResponse::Ok().finish(),
+    match database.register_service(service_to_register).await {
+        Ok((name, details)) => {
+            let response = json!({
+                "name": name,
+                "service_details": details
+            }).to_string();
+            HttpResponse::Created().json(response)
+        },
         Err(err) => {
-            tracing::error!("Failed to execute query: {:?}", err);
-            HttpResponse::InternalServerError().finish()
+            HttpResponse::BadRequest().json(err.to_string())
         }
     }
 }

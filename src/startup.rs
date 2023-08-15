@@ -1,13 +1,22 @@
-use std::{net::TcpListener, collections::HashMap};
+use std::{collections::HashMap, net::TcpListener};
 
-use actix_web::{dev::Server, web::{self, Data}, App, HttpServer};
+use actix_web::{
+    dev::Server,
+    web::{self, Data},
+    App, HttpServer,
+};
 use tracing_actix_web::TracingLogger;
 
 use crate::{
-    routes::{events, health_check, services, queue}, queue::VentrixQueue, database::DatabaseOption,
+    queue::VentrixQueue,
+    routes::{events, health_check, queue, services}, database::Database,
 };
 
-pub fn run(listener: TcpListener, database: DatabaseOption, _feature_flags: HashMap<&str, bool>) -> Result<Server, std::io::Error> {
+pub fn run(
+    listener: TcpListener,
+    database: Box<dyn Database>,
+    _feature_flags: HashMap<&str, bool>,
+) -> Result<Server, std::io::Error> {
     let database = web::Data::new(database);
     let ventrix_queue = web::Data::new(VentrixQueue::default());
 
@@ -25,10 +34,10 @@ pub fn run(listener: TcpListener, database: DatabaseOption, _feature_flags: Hash
                     .service(
                         web::scope("/events")
                             .route("/register", web::post().to(events::register_new_event_type))
-                            .route("/publish", web::post().to(queue::enqueue_event))
+                            .route("/publish", web::post().to(queue::enqueue_event)),
                     ),
             )
-            .app_data(database.clone())
+            .app_data(Data::clone(&database))
             .app_data(Data::clone(&ventrix_queue))
     })
     .listen(listener)?

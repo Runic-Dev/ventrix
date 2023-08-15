@@ -3,7 +3,7 @@ use std::future::{self, Ready};
 use actix_web::{dev::Payload, FromRequest, HttpRequest};
 use serde::Deserialize;
 
-use crate::helpers::parsers::{parse_req_uuid, parse_req_string};
+use crate::helpers::parsers::{parse_req_string, parse_req_uuid};
 
 #[derive(Debug)]
 pub struct Service {
