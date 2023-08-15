@@ -54,7 +54,7 @@ impl Database for InMemoryDatabase {
     ) -> Result<InsertDataResponse, Box<dyn Error>> {
         let event_type_details = EventTypeDetails::new(
             event_type.description.clone(),
-            event_type.payload_description.clone(),
+            event_type.payload_definition.clone(),
         );
         let mut event_types_lock = self.event_types.lock().await;
         match event_types_lock.insert(event_type.name.clone(), event_type_details.clone()) {

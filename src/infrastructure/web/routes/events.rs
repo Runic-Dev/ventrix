@@ -11,7 +11,7 @@ use serde_json::json;
     fields (
         %event_type_to_register.name,
         %event_type_to_register.description,
-        %event_type_to_register.payload_description
+        %event_type_to_register.payload_definition
     )
 )]
 pub async fn register_new_event_type(
@@ -28,7 +28,7 @@ pub async fn register_new_event_type(
                 {
                     "name": event_type_to_register.name,
                     "description" : event_type_to_register.description,
-                    "payload_description": event_type_to_register.payload_description
+                    "payload_description": event_type_to_register.payload_definition
                 }
             )
             .to_string();
@@ -107,7 +107,7 @@ pub async fn publish_event(
 pub struct NewEventType {
     pub name: String,
     pub description: String,
-    pub payload_description: String,
+    pub payload_definition: String,
 }
 
 #[derive(Debug, Deserialize)]

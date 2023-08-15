@@ -64,14 +64,14 @@ impl Database for PostgresDatabase {
         let uuid = Uuid::new_v4();
         match sqlx::query(
             "
-        INSERT INTO event_types (id, name, description, payload_desc)
+        INSERT INTO event_types (id, name, description, payload_definition)
         VALUES ($1, $2, $3, $4)
         ",
         )
         .bind(uuid)
         .bind(event_type.name.clone())
         .bind(event_type.description.clone())
-        .bind(event_type.payload_description.clone())
+        .bind(event_type.payload_definition.clone())
         .execute(&self.pool)
         .await
         {
