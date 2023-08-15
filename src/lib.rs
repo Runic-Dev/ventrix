@@ -6,3 +6,4 @@ pub mod models;
 pub mod types;
 pub mod helpers;
 pub mod queue;
+mod schema_validator;
