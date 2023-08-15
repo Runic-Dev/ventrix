@@ -1,11 +1,4 @@
-pub mod configuration;
-pub mod database;
-pub mod errors;
-pub mod helpers;
-pub mod models;
-pub mod queue;
-pub mod routes;
-mod schema_validator;
-pub mod startup;
-pub mod telemetry;
-pub mod types;
+pub mod application;
+pub mod common;
+pub mod domain;
+pub mod infrastructure;

@@ -9,10 +9,11 @@ use tokio::sync::mpsc::{Receiver, Sender};
 use tracing_actix_web::TracingLogger;
 
 use crate::{
-    database::Database,
-    queue::VentrixQueue,
-    routes::{events, health_check, services}, types::VentrixEvent,
+    application::queue_service::ventrix_queue::VentrixQueue, common::types::VentrixEvent,
+    infrastructure::persistence::Database,
 };
+
+use super::routes::{events, health_check, services};
 
 pub async fn run(
     listener: TcpListener,

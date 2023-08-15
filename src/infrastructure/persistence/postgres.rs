@@ -1,6 +1,7 @@
+use crate::domain::models::service::Service;
+use crate::infrastructure::web::routes::events::NewEventType;
 use std::error::Error;
 
-use crate::{models::service::Service, routes::events::NewEventType};
 use async_trait::async_trait;
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -65,7 +66,7 @@ impl Database for PostgresDatabase {
             "
         INSERT INTO event_types (id, name, description, payload_desc)
         VALUES ($1, $2, $3, $4)
-        "
+        ",
         )
         .bind(uuid)
         .bind(event_type.name.clone())

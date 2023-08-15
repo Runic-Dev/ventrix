@@ -1,13 +1,15 @@
+pub mod common;
+
+use common::configuration::get_configuration;
+use common::telemetry::{get_subscriber, init_tracing_subscriber};
 use secrecy::ExposeSecret;
 use sqlx::PgPool;
 use std::collections::HashMap;
 use std::net::TcpListener;
-use ventrix::configuration::get_configuration;
-use ventrix::database::inmemory::InMemoryDatabase;
-use ventrix::database::postgres::PostgresDatabase;
-use ventrix::database::Database;
-use ventrix::startup::run;
-use ventrix::telemetry::{get_subscriber, init_tracing_subscriber};
+use ventrix::infrastructure::persistence::inmemory::InMemoryDatabase;
+use ventrix::infrastructure::persistence::postgres::PostgresDatabase;
+use ventrix::infrastructure::persistence::Database;
+use ventrix::infrastructure::web::startup::run;
 
 #[tokio::main]
 async fn main() -> Result<(), std::io::Error> {

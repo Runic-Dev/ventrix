@@ -3,6 +3,14 @@ use secrecy::ExposeSecret;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use std::{collections::HashMap, net::TcpListener};
 use uuid::Uuid;
+use ventrix::infrastructure::persistence::postgres::PostgresDatabase;
+use ventrix::{
+    common::{
+        configuration::{get_configuration, DatabaseSettings},
+        telemetry::{get_subscriber, init_tracing_subscriber},
+    },
+    infrastructure::web::startup::run,
+};
 
 static TRACING: Lazy<()> = Lazy::new(|| {
     let default_filter_level = "info".to_string();
@@ -16,13 +24,6 @@ static TRACING: Lazy<()> = Lazy::new(|| {
         init_tracing_subscriber(subscriber);
     };
 });
-
-use ventrix::{
-    configuration::{get_configuration, DatabaseSettings},
-    database::PostgresDatabase,
-    startup::run,
-    telemetry::{get_subscriber, init_tracing_subscriber},
-};
 
 #[tokio::test]
 async fn health_check_works() {

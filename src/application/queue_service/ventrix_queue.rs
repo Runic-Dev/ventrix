@@ -1,4 +1,3 @@
-use crate::{models::service::Service, types::VentrixEvent};
 use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
@@ -9,10 +8,9 @@ use tokio::sync::{
     Mutex,
 };
 
-use reqwest;
+use crate::{common::types::VentrixEvent, domain::models::service::Service};
 
-type UniqueServiceList = HashSet<Service>;
-type EventServiceMap = HashMap<String, UniqueServiceList>;
+use super::{EventServiceMap, ListenToEventResult};
 
 #[derive(Debug)]
 pub struct VentrixQueue {
@@ -95,9 +93,4 @@ impl VentrixQueue {
             ListenToEventResult::NewEntry
         }
     }
-}
-
-pub enum ListenToEventResult {
-    NewEntry,
-    Existed,
 }

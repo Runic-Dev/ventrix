@@ -1,7 +1,10 @@
 use actix_web::{web, HttpResponse};
 use serde_json::json;
 
-use crate::{database::Database, models::service::Service, types::ServiceDetails};
+use crate::{
+    common::types::ServiceDetails, domain::models::service::Service,
+    infrastructure::persistence::Database,
+};
 
 use super::DeleteServiceRequest;
 

@@ -25,8 +25,7 @@ pub fn payload_is_valid(payload: &str, schema: &str) -> bool {
 
 #[cfg(test)]
 pub mod test {
-
-    use crate::schema_validator::payload_is_valid;
+    use crate::common::schema_validator::payload_is_valid;
 
     #[test]
     pub fn passes_instance_with_valid_schema() {

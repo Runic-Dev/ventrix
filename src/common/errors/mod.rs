@@ -83,4 +83,3 @@ impl Display for ParsingRecordToStructError {
         write!(f, "{}", self.message)
     }
 }
-

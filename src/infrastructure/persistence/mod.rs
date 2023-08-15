@@ -1,9 +1,10 @@
 pub mod inmemory;
 pub mod postgres;
 
-use crate::{models::service::Service, routes::events::NewEventType};
 use async_trait::async_trait;
 use std::{error::Error, fmt::Debug};
+
+use crate::{domain::models::service::Service, infrastructure::web::routes::events::NewEventType};
 
 #[async_trait]
 pub trait Database: Debug + Send + Sync {
@@ -13,7 +14,7 @@ pub trait Database: Debug + Send + Sync {
     ) -> Result<InsertDataResponse, Box<dyn Error>>;
     async fn remove_service(
         &self,
-        service_name: &str
+        service_name: &str,
     ) -> Result<DeleteDataResponse, Box<dyn Error>>;
     async fn register_event_type(
         &self,

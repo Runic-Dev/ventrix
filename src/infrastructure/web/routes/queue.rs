@@ -1,6 +1,6 @@
-use crate::queue::VentrixQueue;
-use crate::types::VentrixEvent;
 use actix_web::{web, HttpResponse};
+
+use crate::{application::queue_service::ventrix_queue::VentrixQueue, common::types::VentrixEvent};
 
 #[tracing::instrument(
     name = "New event added to queue",

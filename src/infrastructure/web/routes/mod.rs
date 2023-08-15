@@ -1,5 +1,5 @@
 pub mod events;
-mod health_check;
+pub mod health_check;
 pub mod queue;
 pub mod services;
 
@@ -8,5 +8,5 @@ use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub struct DeleteServiceRequest {
-    pub name: String
+    pub name: String,
 }
