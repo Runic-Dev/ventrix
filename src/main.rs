@@ -36,5 +36,5 @@ async fn main() -> Result<(), std::io::Error> {
         configuration.application.host, configuration.application.port
     );
     let listener = TcpListener::bind(address)?;
-    run(listener, database, feature_flags)?.await
+    run(listener, database, feature_flags).await?.await
 }

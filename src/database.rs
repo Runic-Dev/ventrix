@@ -40,7 +40,6 @@ impl PostgresDatabase {
 pub struct InMemoryDatabase {
     service_register: Mutex<HashMap<String, ServiceDetails>>,
     event_types: Mutex<HashMap<String, EventTypeDetails>>,
-    event_type_to_services: HashMap<String, String>,
 }
 
 #[async_trait]

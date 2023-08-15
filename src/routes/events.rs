@@ -2,7 +2,7 @@ use actix_web::{web, HttpResponse};
 use serde::Deserialize;
 use serde_json::json;
 
-use crate::database::Database;
+use crate::{database::Database, queue::VentrixQueue, types::VentrixEvent};
 
 #[tracing::instrument(
     name = "Registering new event type",
@@ -26,12 +26,31 @@ pub async fn register_new_event_type(
             let json_response = json!({
                 "name": name,
                 "event_type_details": details
-            }).to_string();
+            })
+            .to_string();
             HttpResponse::Created().json(json_response)
-        },
-        Err(err) => {
-            HttpResponse::BadRequest().json(err.to_string())
         }
+        Err(err) => HttpResponse::BadRequest().json(err.to_string()),
+    }
+}
+
+#[tracing::instrument(name = "Publishing event")]
+pub async fn publish_event(
+    event: web::Json<VentrixEvent>,
+    queue: web::Data<VentrixQueue>,
+) -> HttpResponse {
+    let queue = queue.get_ref();
+
+    match queue.sender.send(event.into_inner()).await {
+        Ok(_) => {
+            // TODO: Find out why the json body isn't being sent
+            let response = json!({
+                "message": "Successfully added event to queue"
+            })
+            .to_string();
+            HttpResponse::Created().json(response)
+        }
+        Err(_) => HttpResponse::InternalServerError().reason("Unable to publish event").finish()
     }
 }
 

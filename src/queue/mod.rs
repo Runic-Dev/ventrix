@@ -1,10 +1,22 @@
 use crate::{models::service::Service, types::VentrixEvent};
-use std::collections::VecDeque;
+use std::collections::{HashMap, HashSet};
 
-use tokio::sync::Mutex;
+use tokio::sync::{
+    mpsc::Sender,
+    Mutex,
+};
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct VentrixQueue {
-    pub queue: Mutex<VecDeque<VentrixEvent>>,
-    services: Vec<Service>,
+    pub sender: Sender<VentrixEvent>,
+    pub event_type_to_services: Mutex<HashMap<String, HashSet<Service>>>,
+}
+
+impl VentrixQueue {
+    pub async fn new(sender: Sender<VentrixEvent>) -> Self {
+        Self {
+            sender,
+            event_type_to_services: Mutex::new(HashMap::<String, HashSet<Service>>::default()),
+        }
+    }
 }
