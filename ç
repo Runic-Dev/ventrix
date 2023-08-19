@@ -1,7 +1,7 @@
 use crate::common;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_str, json, Map, Value};
-use std::{error::Error, fmt::Display, str::FromStr};
+use std::{error::Error, fmt::Display};
 use valico::{
     json_dsl::{self, Builder},
     json_schema::{self},
@@ -103,9 +103,11 @@ fn is_valid_event_def(value: &mut Value) -> bool {
 fn get_properties_as_map(value: &mut Value) -> Result<Map<String, Value>, InvalidPropertyDef> {
     match value["properties"].as_object() {
         Some(parsed_props) => Ok(parsed_props.clone()),
-        None => Err(InvalidPropertyDef::new(String::from(
-            "Properties should be an object",
-        ))),
+        None => {
+            Err(InvalidPropertyDef::new(String::from(
+                "Properties should be an object",
+            )))
+        }
     }
 }
 
@@ -115,10 +117,12 @@ fn get_properties_details_as_map<'a>(
 ) -> Result<&'a Map<String, Value>, InvalidPropertyDef> {
     match value["properties"].as_object() {
         Some(val_obj) => Ok(val_obj),
-        None => Err(InvalidPropertyDef::new(format!(
-            "Definition for {} is not an object",
-            key
-        ))),
+        None => {
+            Err(InvalidPropertyDef::new(format!(
+                "Definition for {} is not an object",
+                key
+            )))
+        }
     }
 }
 
@@ -139,10 +143,12 @@ fn get_property_type_as_str<'a>(
             };
             Ok(prop_type_as_string)
         }
-        None => Err(InvalidPropertyDef::new(format!(
-            "Type was not defined for property {}",
-            key
-        ))),
+        None => {
+            Err(InvalidPropertyDef::new(format!(
+                "Type was not defined for property {}",
+                key
+            )))
+        }
     }
 }
 
@@ -165,68 +171,29 @@ fn check_object_property_def(value: &mut Value, key: &str) -> Result<(), Invalid
         params.req_typed("properties", json_dsl::object());
         params.req_typed("required", json_dsl::array_of(json_dsl::string()));
     });
-
-    if params.process(value, None).is_strictly_valid() {
-        return Ok(());
-    }
-    Err(InvalidPropertyDef::new(format!(
-        "Definition for property {} is invalid for a object type",
-        key
-    )))
-}
-
-enum SchemaProperty {
-    String,
-    Object,
-}
-
-impl FromStr for SchemaProperty {
-    type Err = InvalidPropertyDef;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let lower_case = s.to_lowercase();
-        let s = lower_case.as_str();
-        match s {
-            "string" => Ok(SchemaProperty::String),
-            "object" => Ok(SchemaProperty::Object),
-            _ => Err(InvalidPropertyDef::new(String::from(s))),
-        }
-    }
-}
-
-impl SchemaProperty {
-    fn get_verico_params(&self) -> Builder {
-        match self {
-            SchemaProperty::String => Builder::build(|params| {
-                params.req_typed("type", json_dsl::string());
-            }),
-            SchemaProperty::Object => Builder::build(|params| {
-                params.req_typed("type", json_dsl::string());
-                params.req_typed("properties", json_dsl::object());
-                params.req_typed("required", json_dsl::array_of(json_dsl::string()));
-            }),
-        }
-    }
 }
 
 fn is_valid_property_def(value: &mut Value) -> Result<(), InvalidPropertyDef> {
     let mut properties = get_properties_as_map(value)?;
 
     for (key, value) in properties.iter_mut() {
-        let value_clone = &value.clone();
-        let property_details = get_properties_details_as_map(value_clone, key)?;
+        let property_details = get_properties_details_as_map(value, key)?;
 
-        let prop_type_as_string = get_property_type_as_str(property_details, key)?;
+        let prop_type = get_property_type_as_str(property_details, key)?;
 
-        let prop_type = SchemaProperty::from_str(prop_type_as_string)?;
-
-        let params = prop_type.get_verico_params();
-
-        if !params.process(value, None).is_strictly_valid() {
-            return Err(InvalidPropertyDef::new(format!(
-                "Definition for property {} is invalid for a {} type",
-                key, prop_type_as_string
-            )));
+        match prop_type {
+            "string" => {
+                check_string_property_def(value, key)?
+            },
+            "object" => {
+                check_object_property_def(value, key)?
+            },
+            _ => {
+                return Err(InvalidPropertyDef::new(format!(
+                    "Property type for {} is not a valid type",
+                    key
+                )));
+            }
         }
     }
 

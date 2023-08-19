@@ -19,6 +19,7 @@ pub async fn register_new_event_type(
     database: web::Data<Box<dyn Database>>,
 ) -> HttpResponse {
     let database = database.get_ref();
+
     let database_response = database.register_event_type(&event_type_to_register).await;
 
     match database_response {
