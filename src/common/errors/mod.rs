@@ -83,3 +83,24 @@ impl Display for ParsingRecordToStructError {
         write!(f, "{}", self.message)
     }
 }
+
+#[derive(Debug)]
+pub struct InvalidPropertyDef {
+    message: String
+}
+
+impl InvalidPropertyDef {
+    pub fn new(message: String) -> Self {
+        Self {
+            message
+        }
+    }
+}
+
+impl Error for InvalidPropertyDef {}
+
+impl Display for InvalidPropertyDef {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}

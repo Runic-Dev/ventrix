@@ -1,8 +1,13 @@
-use std::{error::Error, fmt::Display};
-use serde::{Deserialize, Serialize};
-use serde_json::{from_str, json, Value};
-use valico::json_schema;
 use crate::common;
+use serde::{Deserialize, Serialize};
+use serde_json::{from_str, json, Map, Value};
+use std::{error::Error, fmt::Display};
+use valico::{
+    json_dsl::{self, Builder},
+    json_schema::{self},
+};
+
+use super::errors::InvalidPropertyDef;
 
 pub fn payload_is_valid(payload: &str, schema: &str) -> bool {
     let payload_as_obj = match from_str(payload) {
@@ -28,20 +33,20 @@ pub fn payload_is_valid(payload: &str, schema: &str) -> bool {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 enum JsonSchemaType {
-    String
+    String,
 }
 
 impl Display for JsonSchemaType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            common::schema_validator::JsonSchemaType::String => write!(f, "string")
+            common::schema_validator::JsonSchemaType::String => write!(f, "string"),
         }
     }
 }
 
 #[derive(Debug)]
 struct InvalidPropertyTypeError {
-    message: String
+    message: String,
 }
 
 impl Display for InvalidPropertyTypeError {
@@ -56,7 +61,7 @@ impl Error for InvalidPropertyTypeError {}
 pub struct JsonSchemaDef {
     property_type: JsonSchemaType,
     properties: Value,
-    required: Vec<String>
+    required: Vec<String>,
 }
 
 impl Display for JsonSchemaDef {
@@ -70,15 +75,118 @@ impl Display for JsonSchemaDef {
             for (key, value) in map.into_iter() {
                 properties.push_str(&format!("key: {}, value: {}", key, value));
             }
-        }         
+        }
 
         let mut required = String::from("");
 
         for req in self.required.iter() {
             required.push_str(req);
         }
-        write!(f, "JsonSchemaDef with property type: {}, properties: {}, required: {}", self.property_type, properties, required)
+        write!(
+            f,
+            "JsonSchemaDef with property type: {}, properties: {}, required: {}",
+            self.property_type, properties, required
+        )
     }
+}
+
+fn is_valid_event_def(value: &mut Value) -> bool {
+    let params = Builder::build(|params| {
+        params.req_typed("type", json_dsl::string());
+        params.req_typed("properties", json_dsl::object());
+        params.req_typed("required", json_dsl::array());
+    });
+
+    params.process(value, None).is_strictly_valid()
+}
+
+fn get_properties_as_map(value: &mut Value) -> Result<Map<String, Value>, InvalidPropertyDef> {
+    match value["properties"].as_object() {
+        Some(parsed_props) => Ok(parsed_props.clone()),
+        None => {
+            Err(InvalidPropertyDef::new(String::from(
+                "Properties should be an object",
+            )))
+        }
+    }
+}
+
+fn get_properties_details_as_map<'a>(
+    value: &'a Value,
+    key: &'a String,
+) -> Result<&'a Map<String, Value>, InvalidPropertyDef> {
+    match value["properties"].as_object() {
+        Some(val_obj) => Ok(val_obj),
+        None => {
+            Err(InvalidPropertyDef::new(format!(
+                "Definition for {} is not an object",
+                key
+            )))
+        }
+    }
+}
+
+fn get_property_type_as_str<'a>(
+    property_details: &'a Map<String, Value>,
+    key: &'a String,
+) -> Result<&'a str, InvalidPropertyDef> {
+    match property_details.get("type") {
+        Some(prop_type) => {
+            let prop_type_as_string = match prop_type.as_str() {
+                Some(string_value) => string_value,
+                None => {
+                    return Err(InvalidPropertyDef::new(format!(
+                        "Type for {} is not a string",
+                        key
+                    )))
+                }
+            };
+            Ok(prop_type_as_string)
+        }
+        None => {
+            Err(InvalidPropertyDef::new(format!(
+                "Type was not defined for property {}",
+                key
+            )))
+        }
+    }
+}
+
+fn check_string_property_def(value: &mut Value, key: &str) -> Result<(), InvalidPropertyDef> {
+    let params = Builder::build(|params| {
+        params.req_typed("type", json_dsl::string());
+    });
+    if params.process(value, None).is_strictly_valid() {
+        return Ok(());
+    }
+    Err(InvalidPropertyDef::new(format!(
+        "Definition for property {} is invalid for a string type",
+        key
+    )))
+}
+
+fn is_valid_property_def(value: &mut Value) -> Result<(), InvalidPropertyDef> {
+    let mut properties = get_properties_as_map(value)?;
+
+    for (key, value) in properties.iter_mut() {
+        let property_details = get_properties_details_as_map(value, key)?;
+
+        let prop_type = get_property_type_as_str(property_details, key)?;
+
+        match prop_type {
+            "string" => {
+                check_string_property_def(value, key)?
+            }
+            _ => {
+                return Err(InvalidPropertyDef::new(format!(
+                    "Property type for {} is not a valid type",
+                    key
+                )));
+            }
+        }
+    }
+
+    Ok(())
 }
 
 fn convert_event_type_to_schema_def(
@@ -155,8 +263,6 @@ pub mod test {
         assert_eq!(schema, expected_schema);
         Ok(())
     }
-
-
 
     #[test]
     pub fn converts_payload_with_required_string_field_to_correct_schema(
