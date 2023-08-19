@@ -2,6 +2,7 @@ pub mod common;
 
 use common::configuration::get_configuration;
 use common::telemetry::{get_subscriber, init_tracing_subscriber};
+use common::types::FeatureFlagConfig;
 use secrecy::ExposeSecret;
 use sqlx::PgPool;
 use std::collections::HashMap;
@@ -16,7 +17,10 @@ async fn main() -> Result<(), std::io::Error> {
     let subscriber = get_subscriber("ventrix".into(), "info".into(), std::io::stdout);
     init_tracing_subscriber(subscriber);
 
-    let feature_flags: HashMap<&str, bool> = HashMap::from([("persistence", false)]);
+    let feature_flags: FeatureFlagConfig = HashMap::from([
+        (String::from("persistence"), false),
+        (String::from("validate_event_def"), false),
+    ]);
 
     let configuration = get_configuration().expect("Failed to read configuration");
 

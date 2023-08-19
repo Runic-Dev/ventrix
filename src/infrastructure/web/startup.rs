@@ -9,7 +9,7 @@ use tokio::sync::mpsc::{Receiver, Sender};
 use tracing_actix_web::TracingLogger;
 
 use crate::{
-    application::queue_service::ventrix_queue::VentrixQueue, common::types::VentrixEvent,
+    application::queue_service::ventrix_queue::VentrixQueue, common::types::{VentrixEvent, FeatureFlagConfig},
     infrastructure::persistence::Database,
 };
 
@@ -18,7 +18,7 @@ use super::routes::{events, health_check, services};
 pub async fn run(
     listener: TcpListener,
     database: Box<dyn Database>,
-    _feature_flags: HashMap<&str, bool>,
+    feature_flags: FeatureFlagConfig,
 ) -> Result<Server, std::io::Error> {
     let database = web::Data::new(database);
 
@@ -27,6 +27,7 @@ pub async fn run(
     let ventrix_queue = VentrixQueue::new(sender).await;
     ventrix_queue.start_event_processor(receiver);
     let ventrix_queue = web::Data::new(ventrix_queue);
+    let feature_flags = web::Data::new(feature_flags);
 
     let server = HttpServer::new(move || {
         App::new()
@@ -48,6 +49,7 @@ pub async fn run(
             )
             .app_data(Data::clone(&database))
             .app_data(Data::clone(&ventrix_queue))
+            .app_data(Data::clone(&feature_flags))
     })
     .listen(listener)?
     .run();

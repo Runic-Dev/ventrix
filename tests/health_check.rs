@@ -1,6 +1,7 @@
 use once_cell::sync::Lazy;
 use secrecy::ExposeSecret;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
+use ventrix::common::types::FeatureFlagConfig;
 use std::{collections::HashMap, net::TcpListener};
 use uuid::Uuid;
 use ventrix::infrastructure::persistence::postgres::PostgresDatabase;
@@ -84,7 +85,7 @@ async fn spawn_app() -> TestApp {
     configuration.database.database_name = Uuid::new_v4().to_string();
     let pool = configure_database(&configuration.database).await;
 
-    let feature_flags: HashMap<&str, bool> = HashMap::new();
+    let feature_flags: FeatureFlagConfig = HashMap::new();
 
     let server = run(
         listener,

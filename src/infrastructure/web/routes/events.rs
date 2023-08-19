@@ -1,7 +1,7 @@
-use crate::application;
 use crate::application::queue_service::ventrix_queue::VentrixQueue;
-use crate::common::types::VentrixEvent;
+use crate::common::types::{FeatureFlagConfig, VentrixEvent};
 use crate::infrastructure::persistence::Database;
+use crate::{application, common::schema_validator::is_valid_property_def};
 use actix_web::{web, HttpResponse};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -15,10 +15,20 @@ use serde_json::{json, Value};
     )
 )]
 pub async fn register_new_event_type(
-    event_type_to_register: web::Json<NewEventType>,
+    mut event_type_to_register: web::Json<NewEventType>,
     database: web::Data<Box<dyn Database>>,
+    feature_flags: web::Data<FeatureFlagConfig>,
 ) -> HttpResponse {
     let database = database.get_ref();
+
+    if let Some(payload_validation) = feature_flags.get("validate_event_def") {
+        if *payload_validation {
+            if let Err(err) = is_valid_property_def(&mut event_type_to_register.payload_definition)
+            {
+                return HttpResponse::BadRequest().json(err.to_string());
+            }
+        }
+    }
 
     let database_response = database.register_event_type(&event_type_to_register).await;
 
