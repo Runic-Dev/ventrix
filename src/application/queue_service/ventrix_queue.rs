@@ -14,11 +14,11 @@ use crate::{
 #[derive(Debug)]
 pub struct VentrixQueue {
     pub sender: Sender<VentrixEvent>,
-    database: web::Data<Box<dyn Database>>,
+    database: web::Data<dyn Database>,
 }
 
 impl VentrixQueue {
-    pub async fn new(sender: Sender<VentrixEvent>, database: web::Data<Box<dyn Database>>) -> Self {
+    pub async fn new(sender: Sender<VentrixEvent>, database: web::Data<dyn Database>) -> Self {
         Self { sender, database }
     }
 
@@ -31,7 +31,7 @@ impl VentrixQueue {
 
     async fn event_processor(
         mut receiver: Receiver<VentrixEvent>,
-        database: web::Data<Box<dyn Database>>,
+        database: web::Data<dyn Database>,
     ) {
         let client = Arc::new(Mutex::new(reqwest::Client::new()));
         let client_lock = client.lock().await;

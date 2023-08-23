@@ -1,5 +1,5 @@
-use actix_web::{web, HttpResponse};
 use serde_json::json;
+use actix_web::{web, HttpResponse};
 
 use crate::{
     common::types::ServiceDetails, domain::models::service::RegisterServiceRequest,
@@ -17,7 +17,7 @@ use super::DeleteServiceRequest;
 )]
 pub async fn register_service(
     reg_service_req: web::Json<RegisterServiceRequest>,
-    database: web::Data<Box<dyn Database>>,
+    database: web::Data<dyn Database>,
 ) -> HttpResponse {
     let reg_service_req = reg_service_req.into_inner();
     tracing::info!("Getting reference to database...");
@@ -46,7 +46,7 @@ pub async fn register_service(
 )]
 pub async fn remove_service(
     delete_service_req: web::Json<DeleteServiceRequest>,
-    database: web::Data<Box<dyn Database>>,
+    database: web::Data<dyn Database>,
 ) -> HttpResponse {
     match database.get_ref().remove_service(&delete_service_req.name).await {
         Ok(_) => {

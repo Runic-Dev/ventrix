@@ -17,14 +17,12 @@ use super::routes::{events, health_check, services};
 
 pub async fn run(
     listener: TcpListener,
-    database: Box<dyn Database>,
+    database: web::Data<dyn Database>,
     feature_flags: FeatureFlagConfig,
 ) -> Result<Server, std::io::Error> {
-    let database = web::Data::new(database);
-
     let (sender, receiver): (Sender<VentrixEvent>, Receiver<VentrixEvent>) =
         tokio::sync::mpsc::channel::<VentrixEvent>(50);
-    let ventrix_queue = VentrixQueue::new(sender, Data::clone(&database)).await;
+    let ventrix_queue = VentrixQueue::new(sender, database.clone()).await;
     ventrix_queue.start_event_processor(receiver);
     let ventrix_queue = web::Data::new(ventrix_queue);
     let feature_flags = web::Data::new(feature_flags);
@@ -47,7 +45,7 @@ pub async fn run(
                             .route("/listen", web::post().to(events::listen_to_event)),
                     ),
             )
-            .app_data(Data::clone(&database))
+            .app_data(database.clone())
             .app_data(Data::clone(&ventrix_queue))
             .app_data(Data::clone(&feature_flags))
     })

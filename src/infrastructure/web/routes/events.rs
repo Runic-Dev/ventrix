@@ -17,7 +17,7 @@ use uuid::Uuid;
 )]
 pub async fn register_new_event_type(
     mut event_type_to_register: web::Json<NewEventTypeRequest>,
-    database: web::Data<Box<dyn Database>>,
+    database: web::Data<dyn Database>,
     feature_flags: web::Data<FeatureFlagConfig>,
 ) -> HttpResponse {
     let database = database.get_ref();
@@ -53,7 +53,7 @@ pub async fn register_new_event_type(
 pub async fn listen_to_event(
     listen_request: web::Json<ListenToEvent>,
     queue: web::Data<VentrixQueue>,
-    database: web::Data<Box<dyn Database>>,
+    database: web::Data<dyn Database>,
 ) -> HttpResponse {
     match database.get_ref().get_service(&listen_request.service_name).await {
         Ok(service) => {
@@ -99,7 +99,7 @@ pub struct ListenToEventResponse {
 pub async fn publish_event(
     publish_event_req: web::Json<PublishEventRequest>,
     queue: web::Data<VentrixQueue>,
-    database: web::Data<Box<dyn Database>>
+    database: web::Data<dyn Database>
 ) -> HttpResponse {
     let queue = queue.get_ref();
 

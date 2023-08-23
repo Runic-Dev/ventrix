@@ -15,7 +15,7 @@ use crate::{
 pub async fn enqueue_event(
     event: web::Json<VentrixEvent>,
     ventrix_queue: web::Data<VentrixQueue>,
-    database: web::Data<Box<dyn Database>>,
+    database: web::Data<dyn Database>,
 ) -> HttpResponse {
     tracing::info!("Adding event to the queue: {:?}", event);
     // TODO: Keep this logic encapsulated within the Ventrix queue

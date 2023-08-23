@@ -1,7 +1,10 @@
+use actix_web::web;
 use once_cell::sync::Lazy;
 use secrecy::ExposeSecret;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
 use ventrix::common::types::FeatureFlagConfig;
+use ventrix::infrastructure::persistence::Database;
+use std::sync::Arc;
 use std::{collections::HashMap, net::TcpListener};
 use uuid::Uuid;
 use ventrix::infrastructure::persistence::postgres::PostgresDatabase;
@@ -87,9 +90,11 @@ async fn spawn_app() -> TestApp {
 
     let feature_flags: FeatureFlagConfig = HashMap::new();
 
+    let db_arc: Arc<dyn Database> = Arc::new(PostgresDatabase::new(pool.clone()));
+
     let server = run(
         listener,
-        Box::new(PostgresDatabase::new(pool.clone())),
+        web::Data::from(db_arc),
         feature_flags,
     )
     .await
