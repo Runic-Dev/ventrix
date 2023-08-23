@@ -126,7 +126,7 @@ fn get_property_type_as_str<'a>(
 enum SchemaProperty {
     String,
     Object,
-    Number
+    _Number
 }
 
 impl FromStr for SchemaProperty {
@@ -148,7 +148,7 @@ impl Display for SchemaProperty {
         match self {
             SchemaProperty::String => write!(f, "String"),
             SchemaProperty::Object => write!(f, "Object"),
-            SchemaProperty::Number => write!(f, "Number"),
+            SchemaProperty::_Number => write!(f, "Number"),
         }
     }
 }
@@ -164,7 +164,7 @@ impl SchemaProperty {
                 params.req_typed("properties", json_dsl::object());
                 params.req_typed("required", json_dsl::array_of(json_dsl::string()));
             }),
-            SchemaProperty::Number => Builder::build(|_params| {
+            SchemaProperty::_Number => Builder::build(|_params| {
                 todo!()
             }),
         }

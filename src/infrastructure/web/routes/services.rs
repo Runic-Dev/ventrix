@@ -2,7 +2,7 @@ use actix_web::{web, HttpResponse};
 use serde_json::json;
 
 use crate::{
-    common::types::ServiceDetails, domain::models::service::Service,
+    common::types::ServiceDetails, domain::models::service::RegisterServiceRequest,
     infrastructure::persistence::Database,
 };
 
@@ -11,21 +11,24 @@ use super::DeleteServiceRequest;
 #[tracing::instrument(
     name = "Registering a new service",
     fields(
-        name = %service.name,
-        url = %service.endpoint
+        name = %reg_service_req.name,
+        url = %reg_service_req.endpoint
     )
 )]
 pub async fn register_service(
-    service: web::Json<Service>,
+    reg_service_req: web::Json<RegisterServiceRequest>,
     database: web::Data<Box<dyn Database>>,
 ) -> HttpResponse {
-    let service = service.into_inner();
-    match database.register_service(&service).await {
+    let reg_service_req = reg_service_req.into_inner();
+    tracing::info!("Getting reference to database...");
+    let database = database.get_ref();
+    tracing::info!("Reference to database received!");
+    match database.register_service(&reg_service_req).await {
         Ok(_) => {
             let response = json!({
-                "name": service.name,
+                "name": reg_service_req.name,
                 "service_details": ServiceDetails {
-                    endpoint: service.endpoint
+                    endpoint: reg_service_req.endpoint
                 }
             })
             .to_string();
@@ -45,7 +48,7 @@ pub async fn remove_service(
     delete_service_req: web::Json<DeleteServiceRequest>,
     database: web::Data<Box<dyn Database>>,
 ) -> HttpResponse {
-    match database.remove_service(&delete_service_req.name).await {
+    match database.get_ref().remove_service(&delete_service_req.name).await {
         Ok(_) => {
             let response = json!({
                 "message": format!("Record successfully deleted for service: {}", delete_service_req.name)

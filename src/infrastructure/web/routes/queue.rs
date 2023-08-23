@@ -1,6 +1,9 @@
 use actix_web::{web, HttpResponse};
 
-use crate::{application::queue_service::ventrix_queue::VentrixQueue, common::types::VentrixEvent};
+use crate::{
+    application::queue_service::ventrix_queue::VentrixQueue, common::types::VentrixEvent,
+    infrastructure::persistence::Database,
+};
 
 #[tracing::instrument(
     name = "New event added to queue",
@@ -12,9 +15,10 @@ use crate::{application::queue_service::ventrix_queue::VentrixQueue, common::typ
 pub async fn enqueue_event(
     event: web::Json<VentrixEvent>,
     ventrix_queue: web::Data<VentrixQueue>,
+    database: web::Data<Box<dyn Database>>,
 ) -> HttpResponse {
     tracing::info!("Adding event to the queue: {:?}", event);
-    // TODO: Introduce some encapsulation, you bladdy heathen!
+    // TODO: Keep this logic encapsulated within the Ventrix queue
     match ventrix_queue
         .get_ref()
         .sender

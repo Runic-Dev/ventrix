@@ -1,4 +1,4 @@
-use std::{collections::HashMap, net::TcpListener};
+use std::net::TcpListener;
 
 use actix_web::{
     dev::Server,
@@ -24,7 +24,7 @@ pub async fn run(
 
     let (sender, receiver): (Sender<VentrixEvent>, Receiver<VentrixEvent>) =
         tokio::sync::mpsc::channel::<VentrixEvent>(50);
-    let ventrix_queue = VentrixQueue::new(sender).await;
+    let ventrix_queue = VentrixQueue::new(sender, Data::clone(&database)).await;
     ventrix_queue.start_event_processor(receiver);
     let ventrix_queue = web::Data::new(ventrix_queue);
     let feature_flags = web::Data::new(feature_flags);

@@ -1,9 +1,11 @@
 use std::fmt::Display;
 
 use serde::Deserialize;
+use uuid::Uuid;
 
 #[derive(Debug, Eq, Hash, PartialEq, Clone, sqlx::FromRow, Deserialize)]
 pub struct Service {
+    pub id: Uuid,
     pub name: String,
     pub endpoint: String,
 }

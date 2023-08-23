@@ -1,9 +1,21 @@
 version: '3'
 services:
+  db:
+    image: "postgres"
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: ventrix
+    ports:
+      - "5432:5432"
   app:
     build: .
+    environment:
+      APP_ENVIRONMENT: docker
     ports:
       - "8000:8000"
+    depends_on:
+      - db
   vinnie:
     image: "vinnie_service"
     ports:
@@ -12,4 +24,10 @@ services:
     image: "viktor_service"
     ports:
       - "8082:8082"
+  grafana:
+    image: "grafana/grafana-oss"
+    ports:
+      - "3000:3000"
+    volumes:
+      - '${PWD}/grafana-storage:/var/lib/grafana'
 

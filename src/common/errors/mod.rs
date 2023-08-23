@@ -61,6 +61,47 @@ impl Display for ServiceNotFoundError {
     }
 }
 
+#[derive(Debug)]
+pub struct EventNotFoundError {
+    pub message: String
+}
+
+impl EventNotFoundError {
+    pub fn new(id: &str) -> Self {
+        Self {
+            message: format!("Event: {:?} not found", id)
+        }
+    }
+}
+
+impl Error for EventNotFoundError {}
+
+impl Display for EventNotFoundError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+#[derive(Debug)]
+pub struct EventTypeNotFoundError {
+    pub message: String
+}
+
+impl EventTypeNotFoundError {
+    pub fn new(id: &str) -> Self {
+        Self {
+            message: format!("EventType: {:?} not found", id)
+        }
+    }
+}
+
+impl Error for EventTypeNotFoundError {}
+
+impl Display for EventTypeNotFoundError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.message)
+    }
+}
+
 impl Error for ServiceNotFoundError {}
 
 #[derive(Debug)]

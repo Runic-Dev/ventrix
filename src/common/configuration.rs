@@ -47,6 +47,7 @@ pub fn get_configuration() -> Result<Settings, config::ConfigError> {
 pub enum Environment {
     Local,
     Production,
+    Docker
 }
 
 impl Environment {
@@ -54,6 +55,7 @@ impl Environment {
         match self {
             Environment::Local => "local",
             Environment::Production => "production",
+            Environment::Docker => "docker",
         }
     }
 }
@@ -65,6 +67,7 @@ impl TryFrom<String> for Environment {
         match s.to_lowercase().as_str() {
             "local" => Ok(Self::Local),
             "production" => Ok(Self::Production),
+            "docker" => Ok(Self::Docker),
             other => Err(format!(
                 "{} is not a supported environment. Use either 'local' or 'production'",
                 other
