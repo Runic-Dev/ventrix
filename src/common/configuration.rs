@@ -47,7 +47,7 @@ pub fn get_configuration() -> Result<Settings, config::ConfigError> {
 pub enum Environment {
     Local,
     Production,
-    Docker
+    Docker,
 }
 
 impl Environment {

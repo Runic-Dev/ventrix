@@ -1,5 +1,5 @@
-use serde_json::json;
 use actix_web::{web, HttpResponse};
+use serde_json::json;
 
 use crate::{
     common::types::ServiceDetails, domain::models::service::RegisterServiceRequest,
@@ -48,7 +48,11 @@ pub async fn remove_service(
     delete_service_req: web::Json<DeleteServiceRequest>,
     database: web::Data<dyn Database>,
 ) -> HttpResponse {
-    match database.get_ref().remove_service(&delete_service_req.name).await {
+    match database
+        .get_ref()
+        .remove_service(&delete_service_req.name)
+        .await
+    {
         Ok(_) => {
             let response = json!({
                 "message": format!("Record successfully deleted for service: {}", delete_service_req.name)

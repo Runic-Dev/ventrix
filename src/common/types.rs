@@ -38,3 +38,35 @@ impl EventTypeDetails {
 }
 
 pub type FeatureFlagConfig = HashMap<String, bool>;
+
+#[derive(Serialize)]
+pub struct ListenToEventResponse {
+    pub message: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct PublishEventRequest {
+    pub event_type: String,
+    pub payload: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct NewEventTypeRequest {
+    pub name: String,
+    pub description: String,
+    pub payload_definition: Value,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct EventType {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub payload_definition: Value,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ListenToEvent {
+    pub service_name: String,
+    pub event_type: String,
+}

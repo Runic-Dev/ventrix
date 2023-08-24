@@ -63,13 +63,13 @@ impl Display for ServiceNotFoundError {
 
 #[derive(Debug)]
 pub struct EventNotFoundError {
-    pub message: String
+    pub message: String,
 }
 
 impl EventNotFoundError {
     pub fn new(id: &str) -> Self {
         Self {
-            message: format!("Event: {:?} not found", id)
+            message: format!("Event: {:?} not found", id),
         }
     }
 }
@@ -83,13 +83,13 @@ impl Display for EventNotFoundError {
 }
 #[derive(Debug)]
 pub struct EventTypeNotFoundError {
-    pub message: String
+    pub message: String,
 }
 
 impl EventTypeNotFoundError {
     pub fn new(id: &str) -> Self {
         Self {
-            message: format!("EventType: {:?} not found", id)
+            message: format!("EventType: {:?} not found", id),
         }
     }
 }
@@ -127,14 +127,12 @@ impl Display for ParsingRecordToStructError {
 
 #[derive(Debug)]
 pub struct InvalidPropertyDef {
-    message: String
+    message: String,
 }
 
 impl InvalidPropertyDef {
     pub fn new(message: String) -> Self {
-        Self {
-            message
-        }
+        Self { message }
     }
 }
 

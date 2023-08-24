@@ -6,10 +6,10 @@ use crate::common::errors::EventTypeAlreadyExistsError;
 use crate::common::errors::EventTypeNotFoundError;
 use crate::common::errors::ServiceAlreadyExistsError;
 use crate::common::errors::ServiceNotFoundError;
+use crate::common::types::NewEventTypeRequest;
 use crate::common::types::{EventTypeDetails, VentrixEvent};
 use crate::domain::models::service::RegisterServiceRequest;
 use crate::domain::models::service::Service;
-use crate::infrastructure::web::routes::events::NewEventTypeRequest;
 use async_trait::async_trait;
 use tokio::sync::Mutex;
 use uuid::Uuid;
@@ -44,7 +44,7 @@ impl Database for InMemoryDatabase {
                 let service = Service {
                     id: Uuid::new_v4(),
                     name: reg_service_req.name.clone(),
-                    endpoint: reg_service_req.endpoint.clone()
+                    endpoint: reg_service_req.endpoint.clone(),
                 };
                 let insert_result =
                     locked_service_register.insert(service.name.clone(), service.clone());
@@ -143,9 +143,10 @@ impl Database for InMemoryDatabase {
         let event_type_to_service_lock = self.event_type_to_service.lock().await;
         match event_type_to_service_lock
             .get(event_type)
-            .ok_or_else(|| Box::new(EventTypeNotFoundError::new(event_type))) {
-                Ok(service_vec) => Ok(service_vec.clone()),
-                Err(err) => Err(err)
+            .ok_or_else(|| Box::new(EventTypeNotFoundError::new(event_type)))
+        {
+            Ok(service_vec) => Ok(service_vec.clone()),
+            Err(err) => Err(err),
         }
     }
 }

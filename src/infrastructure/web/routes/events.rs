@@ -1,10 +1,12 @@
 use crate::application::queue_service::ventrix_queue::VentrixQueue;
 use crate::common::schema_validator::is_valid_property_def;
-use crate::common::types::{FeatureFlagConfig, VentrixEvent};
+use crate::common::types::{
+    FeatureFlagConfig, ListenToEvent, ListenToEventResponse, NewEventTypeRequest,
+    PublishEventRequest, VentrixEvent,
+};
 use crate::infrastructure::persistence::Database;
 use actix_web::{web, HttpResponse};
-use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::json;
 use uuid::Uuid;
 
 #[tracing::instrument(
@@ -62,24 +64,16 @@ pub async fn listen_to_event(
         Ok(_) => HttpResponse::Created().json(ListenToEventResponse {
             message: format!(
                 "Service {} successfully registered to listen to event type {}",
-                &listen_request.service_name,
-                &listen_request.event_type
+                &listen_request.service_name, &listen_request.event_type
             ),
         }),
         Err(err) => HttpResponse::Ok().json(ListenToEventResponse {
             message: format!(
                 "Failed subscribing service {} to event type {}. Error from database: {}",
-                &listen_request.service_name,
-                &listen_request.event_type,
-                err
+                &listen_request.service_name, &listen_request.event_type, err
             ),
         }),
     }
-}
-
-#[derive(Serialize)]
-pub struct ListenToEventResponse {
-    message: String,
 }
 
 #[tracing::instrument(name = "Publishing event")]
@@ -114,31 +108,4 @@ pub async fn publish_event(
             .reason("Unable to publish event")
             .finish(),
     }
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct PublishEventRequest {
-    pub event_type: String,
-    pub payload: String,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct NewEventTypeRequest {
-    pub name: String,
-    pub description: String,
-    pub payload_definition: Value,
-}
-
-#[derive(Debug, Deserialize, Serialize)]
-pub struct EventType {
-    pub id: String,
-    pub name: String,
-    pub description: String,
-    pub payload_definition: Value,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ListenToEvent {
-    pub service_name: String,
-    pub event_type: String,
 }

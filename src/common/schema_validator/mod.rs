@@ -126,7 +126,7 @@ fn get_property_type_as_str<'a>(
 enum SchemaProperty {
     String,
     Object,
-    _Number
+    _Number,
 }
 
 impl FromStr for SchemaProperty {
@@ -164,9 +164,7 @@ impl SchemaProperty {
                 params.req_typed("properties", json_dsl::object());
                 params.req_typed("required", json_dsl::array_of(json_dsl::string()));
             }),
-            SchemaProperty::_Number => Builder::build(|_params| {
-                todo!()
-            }),
+            SchemaProperty::_Number => Builder::build(|_params| todo!()),
         }
     }
 }
@@ -188,8 +186,7 @@ pub fn is_valid_property_def(value: &mut Value) -> Result<(), InvalidPropertyDef
         if !params.process(value, None).is_strictly_valid() {
             return Err(InvalidPropertyDef::new(format!(
                 "Definition for property {} is invalid for a {} type",
-                key,
-                prop_type
+                key, prop_type
             )));
         }
     }

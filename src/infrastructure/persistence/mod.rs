@@ -4,9 +4,10 @@ pub mod postgres;
 use async_trait::async_trait;
 use std::{error::Error, fmt::Debug};
 
-use crate::{domain::models::service::{Service, RegisterServiceRequest}, common::types::VentrixEvent};
-
-use super::web::routes::events::NewEventTypeRequest;
+use crate::{
+    common::types::{NewEventTypeRequest, VentrixEvent},
+    domain::models::service::{RegisterServiceRequest, Service},
+};
 
 #[async_trait]
 pub trait Database: Debug + Send + Sync {
@@ -29,14 +30,17 @@ pub trait Database: Debug + Send + Sync {
     ) -> Result<InsertDataResponse, Box<dyn Error>>;
     async fn fulfil_event(
         &self,
-        event: &VentrixEvent
+        event: &VentrixEvent,
     ) -> Result<UpdateDataResponse, Box<dyn Error>>;
     async fn register_service_for_event_type(
         &self,
         service_name: &str,
-        event_type_name: &str
+        event_type_name: &str,
     ) -> Result<InsertDataResponse, Box<dyn Error>>;
-    async fn get_service_by_event_type(&self, event_type: &str) -> Result<Vec<Service>, Box<dyn Error + Send>>;
+    async fn get_service_by_event_type(
+        &self,
+        event_type: &str,
+    ) -> Result<Vec<Service>, Box<dyn Error + Send>>;
 }
 
 pub enum InsertDataResponse {

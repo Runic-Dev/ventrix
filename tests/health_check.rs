@@ -2,12 +2,12 @@ use actix_web::web;
 use once_cell::sync::Lazy;
 use secrecy::ExposeSecret;
 use sqlx::{Connection, Executor, PgConnection, PgPool};
-use ventrix::common::types::FeatureFlagConfig;
-use ventrix::infrastructure::persistence::Database;
 use std::sync::Arc;
 use std::{collections::HashMap, net::TcpListener};
 use uuid::Uuid;
+use ventrix::common::types::FeatureFlagConfig;
 use ventrix::infrastructure::persistence::postgres::PostgresDatabase;
+use ventrix::infrastructure::persistence::Database;
 use ventrix::{
     common::{
         configuration::{get_configuration, DatabaseSettings},
@@ -92,13 +92,9 @@ async fn spawn_app() -> TestApp {
 
     let db_arc: Arc<dyn Database> = Arc::new(PostgresDatabase::new(pool.clone()));
 
-    let server = run(
-        listener,
-        web::Data::from(db_arc),
-        feature_flags,
-    )
-    .await
-    .expect("Failed to bind address");
+    let server = run(listener, web::Data::from(db_arc), feature_flags)
+        .await
+        .expect("Failed to bind address");
     let _ = tokio::spawn(server).await;
 
     TestApp {

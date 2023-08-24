@@ -1,5 +1,5 @@
 use crate::domain::models::service::RegisterServiceRequest;
-use crate::infrastructure::web::routes::events::NewEventTypeRequest;
+use crate::infrastructure::persistence::NewEventTypeRequest;
 use crate::{common::types::VentrixEvent, domain::models::service::Service};
 use std::error::Error;
 
@@ -164,13 +164,14 @@ impl Database for PostgresDatabase {
             FROM services 
             INNER JOIN event_type_to_service ON event_type_to_service.service_id = services.id 
             INNER JOIN event_types ON event_type_to_service.event_type_id = event_types.id 
-            WHERE event_types.name = $1;"
+            WHERE event_types.name = $1;",
         )
-            .bind(event_type.clone())
-            .fetch_all(&self.pool)
-        .await {
+        .bind(event_type.clone())
+        .fetch_all(&self.pool)
+        .await
+        {
             Ok(service_vec) => Ok(service_vec),
-            Err(err) => Err(Box::new(err))
+            Err(err) => Err(Box::new(err)),
         }
     }
 }
