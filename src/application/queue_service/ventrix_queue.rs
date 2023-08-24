@@ -18,8 +18,11 @@ pub struct VentrixQueue {
 }
 
 impl VentrixQueue {
-    pub async fn new(sender: Sender<VentrixEvent>, database: web::Data<dyn Database>) -> Self {
-        Self { sender, database }
+    pub async fn new(database: web::Data<dyn Database>) -> Self {
+        let (sender, receiver) = tokio::sync::mpsc::channel::<VentrixEvent>(50);
+        let ventrix_queue = Self { sender, database };
+        ventrix_queue.start_event_processor(receiver);
+        ventrix_queue
     }
 
     pub fn start_event_processor(&self, receiver: Receiver<VentrixEvent>) {

@@ -5,11 +5,10 @@ use actix_web::{
     web::{self, Data},
     App, HttpServer,
 };
-use tokio::sync::mpsc::{Receiver, Sender};
 use tracing_actix_web::TracingLogger;
 
 use crate::{
-    application::queue_service::ventrix_queue::VentrixQueue, common::types::{VentrixEvent, FeatureFlagConfig},
+    application::queue_service::ventrix_queue::VentrixQueue, common::types::FeatureFlagConfig,
     infrastructure::persistence::Database,
 };
 
@@ -20,10 +19,7 @@ pub async fn run(
     database: web::Data<dyn Database>,
     feature_flags: FeatureFlagConfig,
 ) -> Result<Server, std::io::Error> {
-    let (sender, receiver): (Sender<VentrixEvent>, Receiver<VentrixEvent>) =
-        tokio::sync::mpsc::channel::<VentrixEvent>(50);
-    let ventrix_queue = VentrixQueue::new(sender, database.clone()).await;
-    ventrix_queue.start_event_processor(receiver);
+    let ventrix_queue = VentrixQueue::new(database.clone()).await;
     let ventrix_queue = web::Data::new(ventrix_queue);
     let feature_flags = web::Data::new(feature_flags);
 
