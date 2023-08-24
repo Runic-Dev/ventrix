@@ -1,7 +1,7 @@
 use crate::common;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_str, Map, Value};
-use std::{error::Error, fmt::Display, str::FromStr};
+use std::{fmt::Display, str::FromStr};
 use valico::{
     json_dsl::{self, Builder},
     json_schema::{self},
@@ -9,6 +9,12 @@ use valico::{
 
 use super::errors::InvalidPropertyDef;
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+enum JsonSchemaType {
+    String,
+}
+
+// Payload coming from published event
 pub fn payload_is_valid(payload: &str, schema: &str) -> bool {
     let payload_as_obj = match from_str(payload) {
         Ok(payload_obj) => payload_obj,
@@ -31,11 +37,6 @@ pub fn payload_is_valid(payload: &str, schema: &str) -> bool {
     r_schema.validate(&payload_as_obj).is_valid()
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-enum JsonSchemaType {
-    String,
-}
-
 impl Display for JsonSchemaType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -43,19 +44,6 @@ impl Display for JsonSchemaType {
         }
     }
 }
-
-#[derive(Debug)]
-struct InvalidPropertyTypeError {
-    message: String,
-}
-
-impl Display for InvalidPropertyTypeError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.message)
-    }
-}
-
-impl Error for InvalidPropertyTypeError {}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct JsonSchemaDef {
@@ -99,30 +87,7 @@ fn get_properties_as_map(value: &mut Value) -> Result<Map<String, Value>, Invali
     }
 }
 
-fn get_property_type_as_str<'a>(
-    property_details: &'a Map<String, Value>,
-    key: &'a String,
-) -> Result<&'a str, InvalidPropertyDef> {
-    match property_details.get("type") {
-        Some(prop_type) => {
-            let prop_type_as_string = match prop_type.as_str() {
-                Some(string_value) => string_value,
-                None => {
-                    return Err(InvalidPropertyDef::new(format!(
-                        "Type for {} is not a string",
-                        key
-                    )))
-                }
-            };
-            Ok(prop_type_as_string)
-        }
-        None => Err(InvalidPropertyDef::new(format!(
-            "Type was not defined for property {}",
-            key
-        ))),
-    }
-}
-
+#[derive(PartialEq, Eq)]
 enum SchemaProperty {
     String,
     Object,
@@ -173,13 +138,24 @@ pub fn is_valid_property_def(value: &mut Value) -> Result<(), InvalidPropertyDef
     let mut properties = get_properties_as_map(value)?;
 
     for (key, value) in properties.iter_mut() {
+
         let property_details = value.as_object().ok_or_else(|| {
             InvalidPropertyDef::new(format!("Definition for property {} is invalid", key))
         })?;
 
-        let prop_type_as_string = get_property_type_as_str(property_details, key)?;
+        let property_type = property_details.get("type").ok_or_else(||
+            InvalidPropertyDef {
+                message: format!("Type for property {} not defined correctly", key)
+            }
+        )?;
 
-        let prop_type = SchemaProperty::from_str(prop_type_as_string)?;
+        let property_type_str = property_type.as_str().ok_or_else(|| {
+            InvalidPropertyDef {
+                message: format!("Type for property {} must be a string", key)
+            }
+        })?;
+
+        let prop_type = SchemaProperty::from_str(property_type_str)?;
 
         let params = prop_type.get_verico_params();
 
@@ -188,6 +164,10 @@ pub fn is_valid_property_def(value: &mut Value) -> Result<(), InvalidPropertyDef
                 "Definition for property {} is invalid for a {} type",
                 key, prop_type
             )));
+        }
+
+        if prop_type == SchemaProperty::Object {
+            return is_valid_property_def(value);
         }
     }
 
