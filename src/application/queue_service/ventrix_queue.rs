@@ -25,7 +25,7 @@ impl VentrixQueue {
         ventrix_queue
     }
 
-    pub fn start_event_processor(&self, receiver: Receiver<VentrixEvent>) {
+    fn start_event_processor(&self, receiver: Receiver<VentrixEvent>) {
         let event_processor_db = web::Data::clone(&self.database);
         tokio::spawn(async move {
             Self::event_processor(receiver, event_processor_db).await;

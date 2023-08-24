@@ -1,7 +1,7 @@
 use crate::application::queue_service::ventrix_queue::VentrixQueue;
+use crate::common::schema_validator::is_valid_property_def;
 use crate::common::types::{FeatureFlagConfig, VentrixEvent};
 use crate::infrastructure::persistence::Database;
-use crate::common::schema_validator::is_valid_property_def;
 use actix_web::{web, HttpResponse};
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
@@ -52,41 +52,28 @@ pub async fn register_new_event_type(
 #[tracing::instrument(name = "Listening to event type", fields())]
 pub async fn listen_to_event(
     listen_request: web::Json<ListenToEvent>,
-    queue: web::Data<VentrixQueue>,
     database: web::Data<dyn Database>,
 ) -> HttpResponse {
-    match database.get_ref().get_service(&listen_request.service_name).await {
-        Ok(service) => {
-            match queue
-                .listen_to_event(&service.name, &listen_request.event_type)
-                .await
-            {
-                Ok(_) => {
-                    HttpResponse::Created().json(ListenToEventResponse {
-                        message: format!(
-                            "Service {} successfully registered to listen to event type {}",
-                            service,
-                            listen_request.event_type.clone()
-                        ),
-                    })
-                }
-                Err(_) => HttpResponse::Ok()
-                    .json(ListenToEventResponse {
-                        message: format!(
-                            "Service {} was already registered to listen to event type {}",
-                            service,
-                            listen_request.event_type.clone()
-                        ),
-                    }),
-            }
-        }
-        Err(err) => {
-            let response = json!({
-                "message": "There was a problem finding the service on the database",
-                "error": format!("{}", err)
-            });
-            HttpResponse::InternalServerError().json(response)
-        }
+    match database
+        .get_ref()
+        .register_service_for_event_type(&listen_request.service_name, &listen_request.event_type)
+        .await
+    {
+        Ok(_) => HttpResponse::Created().json(ListenToEventResponse {
+            message: format!(
+                "Service {} successfully registered to listen to event type {}",
+                &listen_request.service_name,
+                &listen_request.event_type
+            ),
+        }),
+        Err(err) => HttpResponse::Ok().json(ListenToEventResponse {
+            message: format!(
+                "Failed subscribing service {} to event type {}. Error from database: {}",
+                &listen_request.service_name,
+                &listen_request.event_type,
+                err
+            ),
+        }),
     }
 }
 
@@ -99,34 +86,30 @@ pub struct ListenToEventResponse {
 pub async fn publish_event(
     publish_event_req: web::Json<PublishEventRequest>,
     queue: web::Data<VentrixQueue>,
-    database: web::Data<dyn Database>
+    database: web::Data<dyn Database>,
 ) -> HttpResponse {
     let queue = queue.get_ref();
 
     let event = VentrixEvent {
         id: Uuid::new_v4(),
         event_type: publish_event_req.event_type.clone(),
-        payload: publish_event_req.payload.clone()
+        payload: publish_event_req.payload.clone(),
     };
 
     match queue.sender.send(event.clone()).await {
-        Ok(_) => {
-            match database.save_published_event(&event).await {
-                Ok(_) => {
-                    let response = json!({
-                        "message": "Successfully added event to queue"
-                    })
-                        .to_string();
-                    HttpResponse::Created().json(response)
-                },
-                Err(err) => {
-                    HttpResponse::InternalServerError().json(json!({
-                        "message": "Event added to queue but failed to be saved to the database",
-                        "error": err.to_string()
-                    }))
-                }
+        Ok(_) => match database.save_published_event(&event).await {
+            Ok(_) => {
+                let response = json!({
+                    "message": "Successfully added event to queue"
+                })
+                .to_string();
+                HttpResponse::Created().json(response)
             }
-        }
+            Err(err) => HttpResponse::InternalServerError().json(json!({
+                "message": "Event added to queue but failed to be saved to the database",
+                "error": err.to_string()
+            })),
+        },
         Err(_) => HttpResponse::InternalServerError()
             .reason("Unable to publish event")
             .finish(),
@@ -136,7 +119,7 @@ pub async fn publish_event(
 #[derive(Debug, Deserialize, Serialize)]
 pub struct PublishEventRequest {
     pub event_type: String,
-    pub payload: String
+    pub payload: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
