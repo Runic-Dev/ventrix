@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Display};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -48,6 +48,16 @@ pub struct ListenToEventResponse {
 pub struct PublishEventRequest {
     pub event_type: String,
     pub payload: String,
+}
+
+impl Display for PublishEventRequest {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{{ event_type: {}, payload: {} }}",
+            self.event_type, self.payload
+        )
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize)]

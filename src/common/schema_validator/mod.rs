@@ -7,7 +7,7 @@ use valico::{
     json_schema::{self},
 };
 
-use super::{errors::InvalidPropertyDef, types::NewEventTypeRequest};
+use super::errors::InvalidPropertyDef;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 enum JsonSchemaType {
@@ -35,10 +35,6 @@ pub fn payload_is_valid(payload: &str, schema: &str) -> bool {
     let r_schema = scope.compile_and_return(schema_as_obj, true).ok().unwrap();
 
     r_schema.validate(&payload_as_obj).is_valid()
-}
-
-pub fn create_schema_from_request(request: NewEventTypeRequest) {
-    let payload_def = request.payload_definition;
 }
 
 impl Display for JsonSchemaType {
@@ -184,9 +180,9 @@ pub fn is_valid_property_def(value: &mut Value) -> Result<Value, InvalidProperty
 pub mod tests {
     use serde_json::json;
 
-    use crate::common::types::NewEventTypeRequest;
+    use crate::common::types::{NewEventTypeRequest, PublishEventRequest, VentrixEvent};
 
-    use super::is_valid_property_def;
+    use super::{is_valid_property_def, payload_is_valid};
 
     #[test]
     pub fn should_validate_valid_definition() {
@@ -232,25 +228,29 @@ pub mod tests {
     }
 
     #[test]
-    pub fn should_save_a_schema_from_new_event_type_req() {
-        let mut request = NewEventTypeRequest {
-            name: String::from("test_event"),
-            description: String::from("This is a test event"),
-            payload_definition: json!({
-                "type": "object",
-                "properties": {
-                    "name": {
-                        "type": "string"
-                    },
-                    "age": {
-                        "type": "number"
-                    }
-                },
-                "required": []
-            }),
+    pub fn should_validate_a_published_event_against_a_string_schema() {
+        let request = PublishEventRequest {
+            event_type: String::from("test_event"),
+            payload: json!({
+                "name": "John Rustsworth",
+                "age": "42"
+            })
+            .to_string(),
         };
 
-        let validated_payload_def = is_valid_property_def(&mut request.payload_definition).unwrap();
-        let as_string = validated_payload_def.to_string();
+        let comparison_schema = json!({
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "age": {
+                    "type": "number"
+                }
+            }
+        })
+        .to_string();
+
+        assert!(payload_is_valid(&request.to_string(), &comparison_schema))
     }
 }
