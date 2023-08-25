@@ -23,6 +23,7 @@ pub fn payload_is_valid(payload: &str, schema: &str) -> bool {
             return false;
         }
     };
+
     let schema_as_obj = match from_str(schema) {
         Ok(schema_obj) => schema_obj,
         Err(err) => {
@@ -138,6 +139,12 @@ impl SchemaProperty {
 }
 
 pub fn is_valid_property_def(value: &mut Value) -> Result<Value, InvalidPropertyDef> {
+    value.get("type").ok_or_else(|| {
+        InvalidPropertyDef {
+            message: String::from("The payload_defintion needs to be defined as object")
+        }
+    })?;
+
     let mut properties = get_properties_as_map(value)?;
 
     for (key, value) in properties.iter_mut() {
@@ -178,11 +185,12 @@ pub fn is_valid_property_def(value: &mut Value) -> Result<Value, InvalidProperty
 
 #[cfg(test)]
 pub mod tests {
-    use serde_json::json;
+    use serde_json::{json, Value};
+    use valico::{json_dsl::{self, Builder}, json_schema::Scope};
 
-    use crate::common::types::{NewEventTypeRequest, PublishEventRequest, VentrixEvent};
+    use crate::common::types::NewEventTypeRequest;
 
-    use super::{is_valid_property_def, payload_is_valid};
+    use super::is_valid_property_def;
 
     #[test]
     pub fn should_validate_valid_definition() {
@@ -228,29 +236,40 @@ pub mod tests {
     }
 
     #[test]
-    pub fn should_validate_a_published_event_against_a_string_schema() {
-        let request = PublishEventRequest {
-            event_type: String::from("test_event"),
-            payload: json!({
-                "name": "John Rustsworth",
-                "age": "42"
-            })
-            .to_string(),
-        };
-
-        let comparison_schema = json!({
+    pub fn should_create_schema_from_value_types() {
+        let schema_def = json!({
             "type": "object",
             "properties": {
                 "name": {
                     "type": "string"
-                },
-                "age": {
-                    "type": "number"
                 }
-            }
-        })
-        .to_string();
+            },
+            "required": []
+        });
 
-        assert!(payload_is_valid(&request.to_string(), &comparison_schema))
+        let mut scope = Scope::new();
+        let schema = scope.compile_and_return(schema_def, false).unwrap();
+
+        let payload_str = json!({
+            "name": "John Rustsworth"
+        }).to_string();
+
+        let payload: Value = serde_json::from_str(&payload_str).unwrap();
+        let validation = schema.validate(&payload);
+
+        assert!(validation.is_strictly_valid());
+    }
+
+    #[test]
+    pub fn should_validate_a_published_event_against_a_string_schema() {
+        let mut payload = json!({
+            "name": "John Rustsworth",
+        });
+
+        let schema_params = Builder::build(|params| params.req_typed("name", json_dsl::string()));
+
+        let result = schema_params.process(&mut payload, None);
+
+        assert!(result.is_strictly_valid())
     }
 }

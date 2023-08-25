@@ -1,4 +1,5 @@
 use crate::application::queue_service::ventrix_queue::VentrixQueue;
+use crate::common::errors::InvalidPropertyDef;
 use crate::common::schema_validator::is_valid_property_def;
 use crate::common::types::{
     FeatureFlagConfig, ListenToEvent, ListenToEventResponse, NewEventTypeRequest,
@@ -6,8 +7,22 @@ use crate::common::types::{
 };
 use crate::infrastructure::persistence::Database;
 use actix_web::{web, HttpResponse};
-use serde_json::json;
+use serde_json::{json, Value};
 use uuid::Uuid;
+
+fn set_payload(
+    feature_flags: web::Data<FeatureFlagConfig>,
+    mut payload_def: Value,
+) -> Result<Value, InvalidPropertyDef> {
+    if feature_flags
+        .get("validate_event_def")
+        .is_some_and(|feature_on| *feature_on)
+    {
+        return is_valid_property_def(&mut payload_def);
+    };
+
+    Ok(payload_def)
+}
 
 #[tracing::instrument(
     name = "Registering new event type",
@@ -18,36 +33,40 @@ use uuid::Uuid;
     )
 )]
 pub async fn register_new_event_type(
-    mut event_type_to_register: web::Json<NewEventTypeRequest>,
+    event_type_to_register: web::Json<NewEventTypeRequest>,
     database: web::Data<dyn Database>,
     feature_flags: web::Data<FeatureFlagConfig>,
 ) -> HttpResponse {
     let database = database.get_ref();
 
-    if let Some(payload_validation) = feature_flags.get("validate_event_def") {
-        if *payload_validation {
-            if let Err(err) = is_valid_property_def(&mut event_type_to_register.payload_definition)
-            {
-                return HttpResponse::BadRequest().json(err.to_string());
+    match set_payload(
+        feature_flags,
+        event_type_to_register.payload_definition.clone(),
+    ) {
+        Ok(_) => {
+            let database_response = database.register_event_type(&event_type_to_register).await;
+
+            match database_response {
+                Ok(_) => {
+                    let json_response = json!(
+                        {
+                            "name": event_type_to_register.name,
+                            "description" : event_type_to_register.description,
+                            "payload_description": event_type_to_register.payload_definition
+                        }
+                    )
+                    .to_string();
+                    HttpResponse::Created().json(json_response)
+                }
+                Err(err) => HttpResponse::BadRequest().json(err.to_string()),
             }
         }
-    }
-
-    let database_response = database.register_event_type(&event_type_to_register).await;
-
-    match database_response {
-        Ok(_) => {
-            let json_response = json!(
-                {
-                    "name": event_type_to_register.name,
-                    "description" : event_type_to_register.description,
-                    "payload_description": event_type_to_register.payload_definition
-                }
-            )
-            .to_string();
-            HttpResponse::Created().json(json_response)
+        Err(err) => {
+            let response = json!({
+                "message": err.to_string()
+            });
+            HttpResponse::BadRequest().json(response)
         }
-        Err(err) => HttpResponse::BadRequest().json(err.to_string()),
     }
 }
 

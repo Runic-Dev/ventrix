@@ -24,7 +24,7 @@ async fn main() -> Result<(), std::io::Error> {
 
     let feature_flags: FeatureFlagConfig = HashMap::from([
         (String::from("persistence"), true),
-        (String::from("validate_event_def"), false),
+        (String::from("validate_event_def"), true),
     ]);
 
     let configuration = get_configuration().expect("Failed to read configuration");
