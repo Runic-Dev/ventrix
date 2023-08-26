@@ -7,6 +7,7 @@ use crate::common::errors::EventTypeNotFoundError;
 use crate::common::errors::ServiceAlreadyExistsError;
 use crate::common::errors::ServiceNotFoundError;
 use crate::common::types::NewEventTypeRequest;
+use crate::common::types::PayloadSchema;
 use crate::common::types::{EventTypeDetails, VentrixEvent};
 use crate::domain::models::service::RegisterServiceRequest;
 use crate::domain::models::service::Service;
@@ -148,5 +149,9 @@ impl Database for InMemoryDatabase {
             Ok(service_vec) => Ok(service_vec.clone()),
             Err(err) => Err(err),
         }
+    }
+
+    async fn get_schema_for_event_type(&self, _event_type: &str) -> Result<PayloadSchema, Box<dyn Error>> {
+        todo!()
     }
 }

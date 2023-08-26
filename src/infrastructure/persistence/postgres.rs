@@ -1,3 +1,4 @@
+use crate::common::types::PayloadSchema;
 use crate::domain::models::service::RegisterServiceRequest;
 use crate::infrastructure::persistence::NewEventTypeRequest;
 use crate::{common::types::VentrixEvent, domain::models::service::Service};
@@ -171,6 +172,22 @@ impl Database for PostgresDatabase {
         .await
         {
             Ok(service_vec) => Ok(service_vec),
+            Err(err) => Err(Box::new(err)),
+        }
+    }
+
+    async fn get_schema_for_event_type(
+        &self,
+        event_type_name: &str,
+    ) -> Result<PayloadSchema, Box<dyn Error>> {
+        match sqlx::query_as::<_, PayloadSchema>(
+            r#"SELECT payload_definition FROM event_types WHERE name = $1"#
+        )
+        .bind(event_type_name)
+        .fetch_one(&self.pool)
+        .await
+        {
+            Ok(schema) => Ok(schema),
             Err(err) => Err(Box::new(err)),
         }
     }

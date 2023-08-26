@@ -9,6 +9,7 @@ use crate::infrastructure::persistence::Database;
 use actix_web::{web, HttpResponse};
 use serde_json::{json, Value};
 use uuid::Uuid;
+use valico::json_schema::Scope;
 
 fn set_payload(
     feature_flags: web::Data<FeatureFlagConfig>,
@@ -63,7 +64,8 @@ pub async fn register_new_event_type(
         }
         Err(err) => {
             let response = json!({
-                "message": err.to_string()
+                "message": "Issue validating payload",
+                "error": err.to_string()
             });
             HttpResponse::BadRequest().json(response)
         }
@@ -109,22 +111,80 @@ pub async fn publish_event(
         payload: publish_event_req.payload.clone(),
     };
 
-    match queue.sender.send(event.clone()).await {
-        Ok(_) => match database.save_published_event(&event).await {
-            Ok(_) => {
-                let response = json!({
-                    "message": "Successfully added event to queue"
-                })
-                .to_string();
-                HttpResponse::Created().json(response)
-            }
-            Err(err) => HttpResponse::InternalServerError().json(json!({
-                "message": "Event added to queue but failed to be saved to the database",
-                "error": err.to_string()
-            })),
-        },
-        Err(_) => HttpResponse::InternalServerError()
-            .reason("Unable to publish event")
-            .finish(),
+    let schema = match database
+        .get_schema_for_event_type(&publish_event_req.event_type)
+        .await
+    {
+        Ok(schema_obj) => schema_obj.payload_definition,
+        Err(err) => {
+            let response = json!({
+                "message": "Unable to get schema string for event type",
+                "err": err.to_string()
+            });
+            return HttpResponse::BadRequest().json(response);
+        }
+    };
+
+    let schema_value: Value = match serde_json::from_str(&schema) {
+        Ok(schema_as_value) => schema_as_value,
+        Err(err) => {
+            let response = json!({
+                "message": "Couldn't parse Value from schema string",
+                "err": err.to_string(),
+            });
+            return HttpResponse::BadRequest().json(response);
+        }
+    };
+
+    let mut scope = Scope::new();
+    let scoped_schema = match scope.compile_and_return(schema_value.clone(), false) {
+        Ok(scoped_schema) => scoped_schema,
+        Err(err) => {
+            let response = json!({
+                "message": "Couldn't compile scoped schema from schema value",
+                "err": err.to_string()
+            });
+            return HttpResponse::BadRequest().json(response);
+        }
+    };
+
+    let payload_value: Value = match serde_json::from_str(&event.payload) {
+        Ok(payload_as_value) => payload_as_value,
+        Err(err) => {
+            let response = json!({
+                "message": "Couldn't parse Value from payload string",
+                "err": err.to_string()
+            });
+            return HttpResponse::BadRequest().json(response);
+        }
+    };
+
+    let validation = scoped_schema.validate(&payload_value);
+
+    if !validation.is_strictly_valid() {
+        let response = json!({
+            "message": "Payload did not match the event type payload definition",
+            "expected_payload_schema": schema_value
+        });
+        HttpResponse::BadRequest().json(response)
+    } else {
+        match queue.sender.send(event.clone()).await {
+            Ok(_) => match database.save_published_event(&event).await {
+                Ok(_) => {
+                    let response = json!({
+                        "message": "Successfully added event to queue"
+                    })
+                    .to_string();
+                    HttpResponse::Created().json(response)
+                }
+                Err(err) => HttpResponse::InternalServerError().json(json!({
+                    "message": "Event added to queue but failed to be saved to the database",
+                    "error": err.to_string()
+                })),
+            },
+            Err(_) => HttpResponse::InternalServerError()
+                .reason("Unable to publish event")
+                .finish(),
+        }
     }
 }

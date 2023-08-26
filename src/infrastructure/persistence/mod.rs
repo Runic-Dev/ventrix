@@ -5,7 +5,7 @@ use async_trait::async_trait;
 use std::{error::Error, fmt::Debug};
 
 use crate::{
-    common::types::{NewEventTypeRequest, VentrixEvent},
+    common::types::{NewEventTypeRequest, VentrixEvent, PayloadSchema},
     domain::models::service::{RegisterServiceRequest, Service},
 };
 
@@ -41,6 +41,10 @@ pub trait Database: Debug + Send + Sync {
         &self,
         event_type: &str,
     ) -> Result<Vec<Service>, Box<dyn Error + Send>>;
+    async fn get_schema_for_event_type(
+        &self,
+        event_type: &str,
+    ) -> Result<PayloadSchema, Box<dyn Error>>;
 }
 
 pub enum InsertDataResponse {

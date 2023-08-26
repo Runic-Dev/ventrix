@@ -80,3 +80,8 @@ pub struct ListenToEvent {
     pub service_name: String,
     pub event_type: String,
 }
+
+#[derive(sqlx::FromRow)]
+pub struct PayloadSchema {
+    pub payload_definition: String
+}
