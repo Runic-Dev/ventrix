@@ -2,7 +2,7 @@ use crate::application::queue_service::ventrix_queue::VentrixQueue;
 use crate::common::errors::InvalidPropertyDef;
 use crate::common::schema_validator::is_valid_property_def;
 use crate::common::types::{
-    FeatureFlagConfig, ListenToEvent, ListenToEventResponse, NewEventTypeRequest,
+    FeatureFlagConfig, ListenToEventReq, ListenToEventResponse, NewEventTypeRequest,
     PublishEventRequest, VentrixEvent,
 };
 use crate::infrastructure::persistence::Database;
@@ -74,12 +74,12 @@ pub async fn register_new_event_type(
 
 #[tracing::instrument(name = "Listening to event type", fields())]
 pub async fn listen_to_event(
-    listen_request: web::Json<ListenToEvent>,
+    listen_request: web::Json<ListenToEventReq>,
     database: web::Data<dyn Database>,
 ) -> HttpResponse {
     match database
         .get_ref()
-        .register_service_for_event_type(&listen_request.service_name, &listen_request.event_type)
+        .register_service_for_event_type(&listen_request)
         .await
     {
         Ok(_) => HttpResponse::Created().json(ListenToEventResponse {

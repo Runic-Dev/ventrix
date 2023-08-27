@@ -7,17 +7,17 @@ use uuid::Uuid;
 pub struct Service {
     pub id: Uuid,
     pub name: String,
-    pub endpoint: String,
+    pub url: String,
 }
 
 impl Display for Service {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{{ name: {}, endpoint: {}}}", self.name, self.endpoint)
+        write!(f, "{{ name: {}, endpoint: {}}}", self.name, self.url)
     }
 }
 
 #[derive(Debug, Deserialize)]
 pub struct RegisterServiceRequest {
     pub name: String,
-    pub endpoint: String,
+    pub url: String,
 }

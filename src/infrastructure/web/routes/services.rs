@@ -12,7 +12,7 @@ use super::DeleteServiceRequest;
     name = "Registering a new service",
     fields(
         name = %reg_service_req.name,
-        url = %reg_service_req.endpoint
+        url = %reg_service_req.url
     )
 )]
 pub async fn register_service(
@@ -28,7 +28,7 @@ pub async fn register_service(
             let response = json!({
                 "name": reg_service_req.name,
                 "service_details": ServiceDetails {
-                    endpoint: reg_service_req.endpoint
+                    endpoint: reg_service_req.url
                 }
             })
             .to_string();

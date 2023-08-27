@@ -121,7 +121,7 @@ impl Display for SchemaProperty {
 }
 
 impl SchemaProperty {
-    fn get_verico_params(&self) -> Builder {
+    fn get_valico_params(&self) -> Builder {
         match self {
             SchemaProperty::String => Builder::build(|params| {
                 params.req_typed("type", json_dsl::string());
@@ -164,7 +164,7 @@ pub fn is_valid_property_def(value: &mut Value) -> Result<Value, InvalidProperty
 
         let prop_type = SchemaProperty::from_str(property_type_str)?;
 
-        let params = prop_type.get_verico_params();
+        let params = prop_type.get_valico_params();
 
         if !params.process(value, None).is_strictly_valid() {
             return Err(InvalidPropertyDef::new(format!(

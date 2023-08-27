@@ -1,13 +1,14 @@
 use std::{error::Error, sync::Arc};
 
 use actix_web::web;
+use log::debug;
 use tokio::sync::{
     mpsc::{Receiver, Sender},
     Mutex,
 };
 
 use crate::{
-    common::types::VentrixEvent,
+    common::types::{ListenToEventReq, VentrixEvent},
     infrastructure::persistence::{Database, InsertDataResponse},
 };
 
@@ -44,45 +45,47 @@ impl VentrixQueue {
             tracing::info!("Processing event: {}", &event.event_type);
 
             match database.get_service_by_event_type(&event.event_type).await {
-                Ok(listening_services) => {
-                    for service in listening_services {
+                Ok(details_for_listening_services) => {
+                    for fulfillment_details in details_for_listening_services {
                         let body = VentrixEvent {
                             id: event.id,
                             event_type: event.event_type.clone(),
                             payload: event.payload.clone(),
                         };
 
-                        {
-                            let response = client_lock
-                                .post(service.endpoint.clone())
-                                .json::<VentrixEvent>(&body)
-                                .send()
-                                .await;
-                            if response.is_ok() {
-                                match database.fulfil_event(&event).await {
-                                    Ok(_) => {
-                                        tracing::info!(
-                                            "Event {} was sent to Service {} successfully",
-                                            event.event_type,
-                                            service.name
-                                        );
-                                    }
-                                    Err(_) => {
-                                        tracing::info!(
+                        println!("{}", fulfillment_details);
+
+                        let destination = format!("{}{}", fulfillment_details.url, fulfillment_details.endpoint);
+
+                        let response = client_lock
+                            .post(destination)
+                            .json::<VentrixEvent>(&body)
+                            .send()
+                            .await;
+                        if response.is_ok() {
+                            match database.fulfil_event(&event).await {
+                                Ok(_) => {
+                                    tracing::info!(
+                                        "Event {} was sent to Service {} successfully",
+                                        event.event_type,
+                                        fulfillment_details.name
+                                    );
+                                }
+                                Err(_) => {
+                                    tracing::info!(
                                             "Event {} was sent to Service {} successfully, but was not able to update the database",
                                             event.event_type,
-                                            service.name
+                                            fulfillment_details.name
                                         );
-                                    }
                                 }
-                            } else {
-                                tracing::warn!(
-                                    "Event {} failed to send to Service {}",
-                                    event.event_type,
-                                    service.name
-                                );
                             }
-                        };
+                        } else {
+                            tracing::warn!(
+                                "Event {} failed to send to Service {}",
+                                event.event_type,
+                                fulfillment_details.name
+                            );
+                        }
                     }
                 }
                 Err(_) => {
@@ -97,12 +100,11 @@ impl VentrixQueue {
 
     pub async fn listen_to_event(
         &self,
-        service_name: &str,
-        event_type_name: &str,
+        listen_to_event_req: &ListenToEventReq,
     ) -> Result<InsertDataResponse, Box<dyn Error>> {
         self.database
             .get_ref()
-            .register_service_for_event_type(service_name, event_type_name)
+            .register_service_for_event_type(listen_to_event_req)
             .await
     }
 }

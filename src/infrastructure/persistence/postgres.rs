@@ -1,4 +1,4 @@
-use crate::common::types::PayloadSchema;
+use crate::common::types::{PayloadSchema, ListenToEventReq, EventFulfillmentDetails};
 use crate::domain::models::service::RegisterServiceRequest;
 use crate::infrastructure::persistence::NewEventTypeRequest;
 use crate::{common::types::VentrixEvent, domain::models::service::Service};
@@ -30,13 +30,13 @@ impl Database for PostgresDatabase {
         let uuid = Uuid::new_v4();
         match sqlx::query(
             "
-        INSERT INTO services (id, name, endpoint)
+        INSERT INTO services (id, name, url)
         VALUES ($1, $2, $3)
         ",
         )
         .bind(uuid)
         .bind(service.name.clone())
-        .bind(service.endpoint.clone())
+        .bind(service.url.clone())
         .execute(&self.pool)
         .await
         {
@@ -85,7 +85,7 @@ impl Database for PostgresDatabase {
     async fn get_service(&self, name: &str) -> Result<Service, Box<dyn Error>> {
         match sqlx::query_as::<_, Service>(
             r#"
-        SELECT id, name, endpoint as endpoint FROM services WHERE name = $1"#,
+        SELECT id, name, url FROM services WHERE name = $1"#,
         )
         .bind(name)
         .fetch_one(&self.pool)
@@ -131,8 +131,7 @@ impl Database for PostgresDatabase {
 
     async fn register_service_for_event_type(
         &self,
-        service_name: &str,
-        event_type_name: &str,
+        listen_to_event_req: &ListenToEventReq
     ) -> Result<InsertDataResponse, Box<dyn Error>> {
         let uuid = Uuid::new_v4();
         match sqlx::query(
@@ -142,12 +141,13 @@ impl Database for PostgresDatabase {
             Service AS (
                 SELECT id FROM services WHERE name = $3
             )
-            INSERT INTO event_type_to_service (id, event_type_id, service_id)
-            VALUES ($1, (SELECT id FROM EventType), (SELECT id FROM Service))",
+            INSERT INTO event_type_to_service (id, event_type_id, service_id, endpoint)
+            VALUES ($1, (SELECT id FROM EventType), (SELECT id FROM Service), $4)",
         )
         .bind(uuid)
-        .bind(event_type_name.clone())
-        .bind(service_name.clone())
+        .bind(&listen_to_event_req.event_type.clone())
+        .bind(&listen_to_event_req.service_name.clone())
+        .bind(&listen_to_event_req.endpoint.clone())
         .execute(&self.pool)
         .await
         {
@@ -158,20 +158,20 @@ impl Database for PostgresDatabase {
 
     async fn get_service_by_event_type(
         &self,
-        event_type: &str,
-    ) -> Result<Vec<Service>, Box<dyn Error + Send>> {
-        match sqlx::query_as::<_, Service>(
-            "SELECT * 
+        event_type_name: &str,
+    ) -> Result<Vec<EventFulfillmentDetails>, Box<dyn Error + Send>> {
+        match sqlx::query_as::<_, EventFulfillmentDetails>(
+            "SELECT services.name, services.url, event_type_to_service.endpoint 
             FROM services 
             INNER JOIN event_type_to_service ON event_type_to_service.service_id = services.id 
             INNER JOIN event_types ON event_type_to_service.event_type_id = event_types.id 
             WHERE event_types.name = $1;",
         )
-        .bind(event_type.clone())
+        .bind(event_type_name.clone())
         .fetch_all(&self.pool)
         .await
         {
-            Ok(service_vec) => Ok(service_vec),
+            Ok(event_fulfillment_details) => Ok(event_fulfillment_details),
             Err(err) => Err(Box::new(err)),
         }
     }

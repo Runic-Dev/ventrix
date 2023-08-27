@@ -76,12 +76,26 @@ pub struct EventType {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct ListenToEvent {
+pub struct ListenToEventReq {
     pub service_name: String,
     pub event_type: String,
+    pub endpoint: String
 }
 
 #[derive(sqlx::FromRow)]
 pub struct PayloadSchema {
     pub payload_definition: String
+}
+
+#[derive(Debug, sqlx::FromRow)]
+pub struct EventFulfillmentDetails {
+    pub name: String,
+    pub url: String,
+    pub endpoint: String
+}
+
+impl Display for EventFulfillmentDetails {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{{ name: {}, url: {}, endpoint: {}}}", self.name, self.url, self.endpoint)
+    }
 }

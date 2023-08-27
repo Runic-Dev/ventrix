@@ -3,9 +3,10 @@ use std::error::Error;
 
 use crate::common::errors::EventNotFoundError;
 use crate::common::errors::EventTypeAlreadyExistsError;
-use crate::common::errors::EventTypeNotFoundError;
 use crate::common::errors::ServiceAlreadyExistsError;
 use crate::common::errors::ServiceNotFoundError;
+use crate::common::types::EventFulfillmentDetails;
+use crate::common::types::ListenToEventReq;
 use crate::common::types::NewEventTypeRequest;
 use crate::common::types::PayloadSchema;
 use crate::common::types::{EventTypeDetails, VentrixEvent};
@@ -45,7 +46,7 @@ impl Database for InMemoryDatabase {
                 let service = Service {
                     id: Uuid::new_v4(),
                     name: reg_service_req.name.clone(),
-                    endpoint: reg_service_req.endpoint.clone(),
+                    url: reg_service_req.url.clone(),
                 };
                 let insert_result =
                     locked_service_register.insert(service.name.clone(), service.clone());
@@ -122,33 +123,25 @@ impl Database for InMemoryDatabase {
 
     async fn register_service_for_event_type(
         &self,
-        service_name: &str,
-        event_type_name: &str,
+        listen_to_event_req: &ListenToEventReq
     ) -> Result<InsertDataResponse, Box<dyn Error>> {
         let mut service_to_event_type_lock = self.event_type_to_service.lock().await;
         let service_register_lock = self.service_register.lock().await;
         let service = service_register_lock
-            .get(service_name.clone())
-            .ok_or_else(|| ServiceNotFoundError::new(service_name.clone()))?;
+            .get(&listen_to_event_req.service_name.clone())
+            .ok_or_else(|| ServiceNotFoundError::new(&listen_to_event_req.service_name.clone()))?;
         service_to_event_type_lock
-            .get_mut(event_type_name.clone())
-            .ok_or_else(|| ServiceNotFoundError::new(service_name))
+            .get_mut(&listen_to_event_req.event_type.clone())
+            .ok_or_else(|| ServiceNotFoundError::new(&listen_to_event_req.service_name))
             .map(|service_vec| service_vec.push(service.clone()))?;
         Ok(InsertDataResponse::InMemory)
     }
 
     async fn get_service_by_event_type(
         &self,
-        event_type: &str,
-    ) -> Result<Vec<Service>, Box<dyn Error + Send>> {
-        let event_type_to_service_lock = self.event_type_to_service.lock().await;
-        match event_type_to_service_lock
-            .get(event_type)
-            .ok_or_else(|| Box::new(EventTypeNotFoundError::new(event_type)))
-        {
-            Ok(service_vec) => Ok(service_vec.clone()),
-            Err(err) => Err(err),
-        }
+        _event_type: &str,
+    ) -> Result<Vec<EventFulfillmentDetails>, Box<dyn Error + Send>> {
+        todo!()
     }
 
     async fn get_schema_for_event_type(&self, _event_type: &str) -> Result<PayloadSchema, Box<dyn Error>> {
