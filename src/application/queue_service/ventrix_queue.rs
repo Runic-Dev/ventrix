@@ -1,7 +1,6 @@
 use std::{error::Error, sync::Arc};
 
 use actix_web::web;
-use log::debug;
 use tokio::sync::{
     mpsc::{Receiver, Sender},
     Mutex,
@@ -53,38 +52,43 @@ impl VentrixQueue {
                             payload: event.payload.clone(),
                         };
 
-                        println!("{}", fulfillment_details);
-
-                        let destination = format!("{}{}", fulfillment_details.url, fulfillment_details.endpoint);
+                        let destination = format!(
+                            "{}{}",
+                            fulfillment_details.url, fulfillment_details.endpoint
+                        );
 
                         let response = client_lock
                             .post(destination)
                             .json::<VentrixEvent>(&body)
                             .send()
                             .await;
-                        if response.is_ok() {
-                            match database.fulfil_event(&event).await {
-                                Ok(_) => {
-                                    tracing::info!(
-                                        "Event {} was sent to Service {} successfully",
-                                        event.event_type,
-                                        fulfillment_details.name
-                                    );
-                                }
-                                Err(_) => {
-                                    tracing::info!(
+
+                        match response {
+                            Ok(response_details) => match response_details.error_for_status() {
+                                Ok(_) => match database.fulfil_event(&event).await {
+                                    Ok(_) => {
+                                        tracing::info!(
+                                            "Event {} was sent to Service {} successfully",
+                                            event.event_type,
+                                            fulfillment_details.name
+                                        );
+                                    }
+                                    Err(_) => {
+                                        tracing::info!(
                                             "Event {} was sent to Service {} successfully, but was not able to update the database",
                                             event.event_type,
                                             fulfillment_details.name
                                         );
+                                    }
+                                },
+                                Err(server_error) => {
+                                    tracing::warn!("Event {} was not sent to Service {} - endpoint {} successfully. Error from server: {}",
+                                    event.event_type, fulfillment_details.name, fulfillment_details.endpoint, server_error)
                                 }
+                            },
+                            Err(err) => {
+                                tracing::error!("Could not retrieve response from server: {}", err)
                             }
-                        } else {
-                            tracing::warn!(
-                                "Event {} failed to send to Service {}",
-                                event.event_type,
-                                fulfillment_details.name
-                            );
                         }
                     }
                 }
