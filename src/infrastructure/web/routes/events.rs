@@ -3,7 +3,7 @@ use crate::common::errors::InvalidPropertyDef;
 use crate::common::schema_validator::is_valid_property_def;
 use crate::common::types::{
     FeatureFlagConfig, ListenToEventReq, ListenToEventResponse, NewEventTypeRequest,
-    PublishEventRequest, VentrixEvent,
+    PublishEventRequest, VentrixEvent, VentrixQueueResponse,
 };
 use crate::infrastructure::persistence::Database;
 use actix_web::{web, HttpResponse};
@@ -77,6 +77,7 @@ pub async fn listen_to_event(
     listen_request: web::Json<ListenToEventReq>,
     database: web::Data<dyn Database>,
 ) -> HttpResponse {
+    // TODO: Check that the given endpoint exists before being added
     match database
         .get_ref()
         .register_service_for_event_type(&listen_request)
@@ -168,23 +169,19 @@ pub async fn publish_event(
         });
         HttpResponse::BadRequest().json(response)
     } else {
-        match queue.sender.send(event.clone()).await {
-            Ok(_) => match database.save_published_event(&event).await {
-                Ok(_) => {
-                    let response = json!({
-                        "message": "Successfully added event to queue"
-                    })
-                    .to_string();
-                    HttpResponse::Created().json(response)
-                }
-                Err(err) => HttpResponse::InternalServerError().json(json!({
-                    "message": "Event added to queue but failed to be saved to the database",
-                    "error": err.to_string()
-                })),
+        match queue.publish_event(event).await {
+            VentrixQueueResponse::PublishedAndSaved(message) => {
+                let response = json!({
+                    "message": message
+                });
+                HttpResponse::Created().json(response)
             },
-            Err(_) => HttpResponse::InternalServerError()
-                .reason("Unable to publish event")
-                .finish(),
+            VentrixQueueResponse::PublishedNotSaved(message) => {
+                let response = json!({
+                    "message": message
+                });
+                HttpResponse::MultiStatus().json(response)
+            },
         }
     }
 }

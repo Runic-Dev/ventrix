@@ -43,7 +43,6 @@ async fn main() -> Result<(), std::io::Error> {
                     panic!("Received error: {}", err)
                 }
 
-                // TODO: Move migrations to run before container starts up, iSEVEN says so
                 if let Err(err) = sqlx::migrate!("./migrations").run(&pool).await {
                     panic!("{}", err.to_string())
                 }

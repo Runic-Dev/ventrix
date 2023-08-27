@@ -99,3 +99,11 @@ impl Display for EventFulfillmentDetails {
         write!(f, "{{ name: {}, url: {}, endpoint: {}}}", self.name, self.url, self.endpoint)
     }
 }
+
+pub type VentrixQueueResponseMessage = String;
+
+#[derive(Debug)]
+pub enum VentrixQueueResponse{
+    PublishedAndSaved(VentrixQueueResponseMessage),
+    PublishedNotSaved(VentrixQueueResponseMessage)
+}

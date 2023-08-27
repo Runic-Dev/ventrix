@@ -7,7 +7,7 @@ use tokio::sync::{
 };
 
 use crate::{
-    common::types::{ListenToEventReq, VentrixEvent},
+    common::types::{ListenToEventReq, VentrixEvent, VentrixQueueResponse},
     infrastructure::persistence::{Database, InsertDataResponse},
 };
 
@@ -110,5 +110,24 @@ impl VentrixQueue {
             .get_ref()
             .register_service_for_event_type(listen_to_event_req)
             .await
+    }
+
+    pub async fn publish_event(&self, event: VentrixEvent) -> VentrixQueueResponse {
+        match self.sender.send(event.clone()).await {
+            Ok(_) => match self.database.save_published_event(&event).await {
+                Ok(_) => {
+                    VentrixQueueResponse::PublishedAndSaved(String::from("The event was successfully processed."))
+                }
+                Err(err) => {
+                    VentrixQueueResponse::PublishedNotSaved(
+                        format!("The event was published to the queue but was not successfully recorded to the database. Error message: {}", err)
+                    )
+                }
+            },
+            Err(err) => {
+                // TODO: This means the channel is closed. Consider a recovery strategy.
+                panic!("There is a fatal error within the Ventrix Queue: {}", err)
+            }
+        }
     }
 }
