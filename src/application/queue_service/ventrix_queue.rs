@@ -1,13 +1,16 @@
 use std::{error::Error, sync::Arc};
 
 use actix_web::web;
+use reqwest::Client;
 use tokio::sync::{
     mpsc::{Receiver, Sender},
     Mutex,
 };
 
 use crate::{
-    common::types::{ListenToEventReq, VentrixEvent, VentrixQueueResponse},
+    common::types::{
+        EventFulfillmentDetails, ListenToEventReq, VentrixEvent, VentrixQueueResponse,
+    },
     infrastructure::persistence::{Database, InsertDataResponse},
 };
 
@@ -25,19 +28,11 @@ impl VentrixQueue {
         ventrix_queue
     }
 
-    fn start_event_processor(&self, receiver: Receiver<VentrixEvent>) {
-        let event_processor_db = web::Data::clone(&self.database);
-        tokio::spawn(async move {
-            Self::event_processor(receiver, event_processor_db).await;
-        });
-    }
-
     async fn event_processor(
         mut receiver: Receiver<VentrixEvent>,
         database: web::Data<dyn Database>,
     ) {
         let client = Arc::new(Mutex::new(reqwest::Client::new()));
-        let client_lock = client.lock().await;
         let database = database.get_ref();
 
         while let Some(event) = receiver.recv().await {
@@ -45,52 +40,13 @@ impl VentrixQueue {
 
             match database.get_service_by_event_type(&event.event_type).await {
                 Ok(details_for_listening_services) => {
-                    for fulfillment_details in details_for_listening_services {
-                        let body = VentrixEvent {
-                            id: event.id,
-                            event_type: event.event_type.clone(),
-                            payload: event.payload.clone(),
-                        };
-
-                        let destination = format!(
-                            "{}{}",
-                            fulfillment_details.url, fulfillment_details.endpoint
-                        );
-
-                        let response = client_lock
-                            .post(destination)
-                            .json::<VentrixEvent>(&body)
-                            .send()
-                            .await;
-
-                        match response {
-                            Ok(response_details) => match response_details.error_for_status() {
-                                Ok(_) => match database.fulfil_event(&event).await {
-                                    Ok(_) => {
-                                        tracing::info!(
-                                            "Event {} was sent to Service {} successfully",
-                                            event.event_type,
-                                            fulfillment_details.name
-                                        );
-                                    }
-                                    Err(_) => {
-                                        tracing::info!(
-                                            "Event {} was sent to Service {} successfully, but was not able to update the database",
-                                            event.event_type,
-                                            fulfillment_details.name
-                                        );
-                                    }
-                                },
-                                Err(server_error) => {
-                                    tracing::warn!("Event {} was not sent to Service {} - endpoint {} successfully. Error from server: {}",
-                                    event.event_type, fulfillment_details.name, fulfillment_details.endpoint, server_error)
-                                }
-                            },
-                            Err(err) => {
-                                tracing::error!("Could not retrieve response from server: {}", err)
-                            }
-                        }
-                    }
+                    Self::send_to_listening_services(
+                        details_for_listening_services,
+                        event,
+                        Arc::clone(&client),
+                        database,
+                    )
+                    .await
                 }
                 Err(_) => {
                     tracing::error!(
@@ -127,6 +83,76 @@ impl VentrixQueue {
             Err(err) => {
                 // TODO: This means the channel is closed. Consider a recovery strategy.
                 panic!("There is a fatal error within the Ventrix Queue: {}", err)
+            }
+        }
+    }
+
+    fn start_event_processor(&self, receiver: Receiver<VentrixEvent>) {
+        let event_processor_db = web::Data::clone(&self.database);
+        tokio::spawn(async move {
+            Self::event_processor(receiver, event_processor_db).await;
+        });
+    }
+
+    async fn send_to_listening_services(
+        details_for_listening_services: Vec<EventFulfillmentDetails>,
+        event: VentrixEvent,
+        client: Arc<Mutex<Client>>,
+        database: &dyn Database,
+    ) {
+        let client_lock = client.lock().await;
+        for fulfillment_details in details_for_listening_services {
+            let body = VentrixEvent {
+                id: event.id,
+                event_type: event.event_type.clone(),
+                payload: event.payload.clone(),
+            };
+
+            let destination = format!(
+                "{}{}",
+                fulfillment_details.url, fulfillment_details.endpoint
+            );
+
+            let response = client_lock
+                .post(destination)
+                .json::<VentrixEvent>(&body)
+                .send()
+                .await;
+
+            match response {
+                Ok(response_details) => match response_details.error_for_status() {
+                    Ok(_) => Self::on_success_response(&event, database, fulfillment_details).await,
+                    Err(server_error) => {
+                        tracing::warn!("Event {} was not sent to Service {} - endpoint {} successfully. Error from server: {}",
+                                    event.event_type, fulfillment_details.name, fulfillment_details.endpoint, server_error)
+                    }
+                },
+                Err(err) => {
+                    tracing::error!("Could not retrieve response from server: {}", err)
+                }
+            }
+        }
+    }
+
+    async fn on_success_response(
+        event: &VentrixEvent,
+        database: &dyn Database,
+        fulfillment_details: EventFulfillmentDetails,
+    ) {
+        match database.fulfil_event(event).await {
+            Ok(_) => {
+                tracing::info!(
+                    "Event {} was sent to Service {} successfully",
+                    event.event_type,
+                    fulfillment_details.name
+                );
+            }
+            Err(_) => {
+                tracing::info!(
+                    "Event {} was sent to Service {} successfully, but was not able to update the database",
+                    event.event_type,
+                    fulfillment_details.name
+                );
             }
         }
     }
