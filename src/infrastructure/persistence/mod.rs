@@ -57,12 +57,11 @@ pub trait Database: Debug + Send + Sync {
     async fn update_retry_time(
         &self,
         event_id: Uuid,
-        new_retry_time: DateTime<Utc>
+        new_retry_time: DateTime<Utc>,
+        retries: i16
     ) -> Result<UpdateDataResponse, Box<dyn Error>>;
-}
-
-trait ServiceDatabase {
-
+    async fn get_failed_events(&self) -> 
+        Result<Vec<VentrixEvent>, Box<dyn Error + Sync + Send>>;
 }
 
 pub enum InsertDataResponse {

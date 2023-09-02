@@ -1,11 +1,13 @@
-use crate::common::types::{PayloadSchema, ListenToEventReq, EventFulfillmentDetails};
+use crate::common::types::{
+    EventFulfillmentDetails, FailedEventRow, ListenToEventReq, PayloadSchema, RetryDetails,
+};
 use crate::domain::models::service::RegisterServiceRequest;
 use crate::infrastructure::persistence::NewEventTypeRequest;
 use crate::{common::types::VentrixEvent, domain::models::service::Service};
 use std::error::Error;
 
 use async_trait::async_trait;
-use chrono::{DateTime, Utc, Duration};
+use chrono::{DateTime, Duration, Utc};
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -101,11 +103,10 @@ impl Database for PostgresDatabase {
         &self,
         event: &VentrixEvent,
     ) -> Result<InsertDataResponse, Box<dyn Error>> {
-        let uuid = Uuid::new_v4();
         match sqlx::query(
             "INSERT INTO events_published (id, event_type, payload) VALUES ($1, $2, $3)",
         )
-        .bind(uuid)
+        .bind(event.id)
         .bind(event.event_type.clone())
         .bind(event.payload.clone())
         .execute(&self.pool)
@@ -118,21 +119,22 @@ impl Database for PostgresDatabase {
 
     async fn add_failed_event(
         &self,
-        event: &VentrixEvent
+        event: &VentrixEvent,
     ) -> Result<InsertDataResponse, Box<dyn Error>> {
         let uuid = Uuid::new_v4();
         let retry_time = Utc::now() + Duration::minutes(1);
         match sqlx::query(
             "INSERT INTO failed_events (id, event_id, retry_time) VALUES ($1, $2, $3)",
-            )
-            .bind(uuid)
-            .bind(event.id)
-            .bind(retry_time)
-            .execute(&self.pool)
-            .await {
-                Ok(response) => Ok(InsertDataResponse::Postgres(response.rows_affected())),
-                Err(err) => Err(Box::new(err))
-            }
+        )
+        .bind(uuid)
+        .bind(event.id)
+        .bind(retry_time)
+        .execute(&self.pool)
+        .await
+        {
+            Ok(response) => Ok(InsertDataResponse::Postgres(response.rows_affected())),
+            Err(err) => Err(Box::new(err)),
+        }
     }
 
     async fn fulfil_event(
@@ -151,7 +153,7 @@ impl Database for PostgresDatabase {
 
     async fn register_service_for_event_type(
         &self,
-        listen_to_event_req: &ListenToEventReq
+        listen_to_event_req: &ListenToEventReq,
     ) -> Result<InsertDataResponse, Box<dyn Error>> {
         let uuid = Uuid::new_v4();
         match sqlx::query(
@@ -201,7 +203,7 @@ impl Database for PostgresDatabase {
         event_type_name: &str,
     ) -> Result<PayloadSchema, Box<dyn Error>> {
         match sqlx::query_as::<_, PayloadSchema>(
-            r#"SELECT payload_definition FROM event_types WHERE name = $1"#
+            r#"SELECT payload_definition FROM event_types WHERE name = $1"#,
         )
         .bind(event_type_name)
         .fetch_one(&self.pool)
@@ -212,26 +214,64 @@ impl Database for PostgresDatabase {
         }
     }
 
-    async fn resolve_failed_event(&self, event_id: Uuid) -> Result<UpdateDataResponse, Box<dyn Error>> {
+    async fn resolve_failed_event(
+        &self,
+        event_id: Uuid,
+    ) -> Result<UpdateDataResponse, Box<dyn Error>> {
         match sqlx::query("UPDATE failed_events SET resolved_at = NOW() WHERE event_id = $1")
-        .bind(event_id)
-        .execute(&self.pool)
-        .await {
+            .bind(event_id)
+            .execute(&self.pool)
+            .await
+        {
             Ok(response) => Ok(UpdateDataResponse::Postgres(response.rows_affected())),
-            Err(err) => Err(Box::new(err))
+            Err(err) => Err(Box::new(err)),
         }
     }
 
-    async fn update_retry_time(&self, event_id: Uuid, new_retry_time: DateTime<Utc>) -> Result<UpdateDataResponse, Box<dyn Error>> {
-        match sqlx::query(
-            "UPDATE failed_events SET retry_time = $1 WHERE event_id = $2"
-        )
-        .bind(new_retry_time)
-        .bind(event_id)
-        .execute(&self.pool)
-                .await {
-                Ok(response) => Ok(UpdateDataResponse::Postgres(response.rows_affected())),
-                Err(err) => Err(Box::new(err))
+    async fn update_retry_time(
+        &self,
+        event_id: Uuid,
+        new_retry_time: DateTime<Utc>,
+        retries: i16
+    ) -> Result<UpdateDataResponse, Box<dyn Error>> {
+        match sqlx::query("UPDATE failed_events SET retry_time = $1, retries = $2 WHERE event_id = $3")
+            .bind(new_retry_time)
+            .bind(retries)
+            .bind(event_id)
+            .execute(&self.pool)
+            .await
+        {
+            Ok(response) => Ok(UpdateDataResponse::Postgres(response.rows_affected())),
+            Err(err) => Err(Box::new(err)),
         }
+    }
+
+    async fn get_failed_events(&self) -> Result<Vec<VentrixEvent>, Box<dyn Error + Sync + Send>> {
+        match sqlx::query_as::<_, FailedEventRow>(
+            r#"SELECT e.id, e.event_type, e.payload, f.retry_time, f.retries FROM events_published AS e INNER JOIN failed_events as f ON e.id = f.event_id WHERE f.retries < 3 AND f.retry_time < NOW()"#
+        ).fetch_all(&self.pool).await {
+                Ok(rows) => {
+                    let mut event_vec: Vec<VentrixEvent> = Vec::new();
+                    for failed_event in rows.iter() {
+                        event_vec.push(
+                            VentrixEvent { 
+                                id: failed_event.id, 
+                                event_type: failed_event.event_type.clone(), 
+                                payload: failed_event.payload.clone(), 
+                                retry_details: Some(
+                                    RetryDetails {
+                                        retry_time: failed_event.retry_time,
+                                        retry_count: failed_event.retries
+                                    }
+                                ) 
+                            }
+                        )
+                    }
+                    Ok(event_vec)
+                },
+                Err(err) => {
+                    Err(Box::new(err))
+                }
+            }
     }
 }

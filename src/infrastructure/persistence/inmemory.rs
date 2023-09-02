@@ -154,11 +154,14 @@ impl Database for InMemoryDatabase {
         todo!()
     }
 
-    async fn add_failed_event(&self, event: &VentrixEvent) -> Result<InsertDataResponse, Box<dyn Error>> {
+    async fn add_failed_event(&self, _event: &VentrixEvent) -> Result<InsertDataResponse, Box<dyn Error>> {
         todo!()
     }
 
-    async fn update_retry_time(&self, event_id: Uuid, new_retry_time: DateTime<Utc>) -> Result<UpdateDataResponse, Box<dyn Error>> {
+    async fn update_retry_time(&self, _event_id: Uuid, _new_retry_time: DateTime<Utc>, _retries: i16) -> Result<UpdateDataResponse, Box<dyn Error>> {
+        todo!()
+    }
+    async fn get_failed_events(&self) -> Result<Vec<VentrixEvent>, Box<dyn Error + Sync + Send>> {
         todo!()
     }
 }

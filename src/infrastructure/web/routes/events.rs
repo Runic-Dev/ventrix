@@ -3,7 +3,7 @@ use crate::common::errors::InvalidPropertyDef;
 use crate::common::schema_validator::is_valid_property_def;
 use crate::common::types::{
     FeatureFlagConfig, ListenToEventReq, ListenToEventResponse, NewEventTypeRequest,
-    PublishEventRequest, VentrixEvent, VentrixQueueResponse,
+    PublishEventRequest, VentrixEvent,
 };
 use crate::infrastructure::persistence::Database;
 use actix_web::{web, HttpResponse};
@@ -110,6 +110,14 @@ pub async fn publish_event(
         id: Uuid::new_v4(),
         event_type: publish_event_req.event_type.clone(),
         payload: publish_event_req.payload.clone(),
+        retry_details: None,
+    };
+
+    if let Err(err) = database.save_published_event(&event).await {
+        let response = json!({
+            "message": err.to_string()
+        });
+        return HttpResponse::InternalServerError().json(response);
     };
 
     let schema = match database
@@ -170,18 +178,13 @@ pub async fn publish_event(
         HttpResponse::BadRequest().json(response)
     } else {
         match queue.publish_event(event).await {
-            VentrixQueueResponse::PublishedAndSaved(message) => {
+            Ok(_) => HttpResponse::Created().finish(),
+            Err(err) => {
                 let response = json!({
-                    "message": message
+                    "message": err.to_string()
                 });
-                HttpResponse::Created().json(response)
-            },
-            VentrixQueueResponse::PublishedNotSaved(message) => {
-                let response = json!({
-                    "message": message
-                });
-                HttpResponse::MultiStatus().json(response)
-            },
+                HttpResponse::InternalServerError().json(response)
+            }
         }
     }
 }

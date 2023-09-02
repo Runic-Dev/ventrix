@@ -5,8 +5,6 @@ use serde::{Deserialize, Serialize, Serializer, Deserializer};
 use serde_json::Value;
 use uuid::Uuid;
 
-type RetryDetailsValue = Value;
-
 pub fn datetime_utc_to_string<S>(date: &DateTime<Utc>, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer
@@ -20,9 +18,9 @@ pub fn string_to_datetime_utc<'de, D>(deserialize: D) -> Result<DateTime<Utc>, D
     Ok(DateTime::parse_from_rfc3339(&s).unwrap().with_timezone(&Utc))
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Clone, Debug)]
 pub struct RetryDetails {
-    pub retry_count: usize,
+    pub retry_count: i16,
     #[serde(
         serialize_with = "datetime_utc_to_string",
         deserialize_with = "string_to_datetime_utc"
@@ -35,7 +33,7 @@ pub struct VentrixEvent {
     pub id: Uuid,
     pub event_type: String,
     pub payload: String,
-    pub retry_details: Option<RetryDetailsValue>,
+    pub retry_details: Option<RetryDetails>,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -128,7 +126,7 @@ pub struct FailedEvent {
     pub details: Value,
     pub retry_time: DateTime<Utc>,
     pub created_at: DateTime<Utc>,
-    pub retires: usize,
+    pub retries: usize,
     pub resolved_at: DateTime<Utc>,
 }
 
@@ -148,4 +146,13 @@ pub type VentrixQueueResponseMessage = String;
 pub enum VentrixQueueResponse {
     PublishedAndSaved(VentrixQueueResponseMessage),
     PublishedNotSaved(VentrixQueueResponseMessage),
+}
+
+#[derive(Debug, sqlx::FromRow)]
+pub struct FailedEventRow {
+    pub id: Uuid,
+    pub event_type: String,
+    pub payload: String,
+    pub retry_time: DateTime<Utc>,
+    pub retries: i16
 }
