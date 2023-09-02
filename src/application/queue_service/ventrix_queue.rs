@@ -102,11 +102,7 @@ impl VentrixQueue {
     ) {
         let client_lock = client.lock().await;
         for fulfillment_details in details_for_listening_services {
-            let body = VentrixEvent {
-                id: event.id,
-                event_type: event.event_type.clone(),
-                payload: event.payload.clone(),
-            };
+            let body = event.clone();
 
             let destination = format!(
                 "{}{}",
@@ -124,7 +120,24 @@ impl VentrixQueue {
                     Ok(_) => Self::on_success_response(&event, database, fulfillment_details).await,
                     Err(server_error) => {
                         tracing::warn!("Event {} was not sent to Service {} - endpoint {} successfully. Error from server: {}",
-                                    event.event_type, fulfillment_details.name, fulfillment_details.endpoint, server_error)
+                                    event.event_type, fulfillment_details.name, fulfillment_details.endpoint, server_error);
+
+                        if event.is_retry {
+                            // TODO: Update retry_count and retry_time
+                            return;
+                        } 
+
+                        match database.add_failed_event(&event).await {
+                            Ok(_) => {
+                                tracing::info!("Failed event {} was added to the failed_events table",
+                                    &event.event_type)
+                            },
+                            Err(err) => {
+                                tracing::warn!("Could not add failed event {} to failed_events table. Err: {}",
+                                    &event.event_type,
+                                    err)
+                            }
+                        };
                     }
                 },
                 Err(err) => {
@@ -139,6 +152,25 @@ impl VentrixQueue {
         database: &dyn Database,
         fulfillment_details: EventFulfillmentDetails,
     ) {
+        if event.is_retry {
+            match database.resolve_failed_event(event.id).await {
+                Ok(_) => {
+                    tracing::info!(
+                        "Failed event {} was sent to Service {} successfully",
+                        event.event_type,
+                        fulfillment_details.name
+                    );
+                }
+                Err(err) => {
+                    tracing::warn!(
+                        "Failed event {} was sent to Service {} successfully, but was not able to update the failed events table. Error: {}",
+                        event.event_type,
+                        fulfillment_details.name,
+                        err
+                    )
+                }
+            }
+        }
         match database.fulfil_event(event).await {
             Ok(_) => {
                 tracing::info!(

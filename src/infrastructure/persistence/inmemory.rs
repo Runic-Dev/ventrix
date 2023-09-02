@@ -1,3 +1,4 @@
+use chrono::DateTime;
 use std::collections::HashMap;
 use std::error::Error;
 
@@ -13,6 +14,7 @@ use crate::common::types::{EventTypeDetails, VentrixEvent};
 use crate::domain::models::service::RegisterServiceRequest;
 use crate::domain::models::service::Service;
 use async_trait::async_trait;
+use chrono::Utc;
 use tokio::sync::Mutex;
 use uuid::Uuid;
 
@@ -145,6 +147,18 @@ impl Database for InMemoryDatabase {
     }
 
     async fn get_schema_for_event_type(&self, _event_type: &str) -> Result<PayloadSchema, Box<dyn Error>> {
+        todo!()
+    }
+
+    async fn resolve_failed_event(&self, _event_id: Uuid) -> Result<UpdateDataResponse, Box<dyn Error>> {
+        todo!()
+    }
+
+    async fn add_failed_event(&self, event: &VentrixEvent) -> Result<InsertDataResponse, Box<dyn Error>> {
+        todo!()
+    }
+
+    async fn update_retry_time(&self, event_id: Uuid, new_retry_time: DateTime<Utc>) -> Result<UpdateDataResponse, Box<dyn Error>> {
         todo!()
     }
 }

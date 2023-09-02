@@ -2,6 +2,8 @@ pub mod inmemory;
 pub mod postgres;
 
 use async_trait::async_trait;
+use chrono::{Utc, DateTime};
+use uuid::Uuid;
 use std::{error::Error, fmt::Debug};
 
 use crate::{
@@ -44,6 +46,23 @@ pub trait Database: Debug + Send + Sync {
         &self,
         event_type: &str,
     ) -> Result<PayloadSchema, Box<dyn Error>>;
+    async fn add_failed_event(
+        &self,
+        event: &VentrixEvent
+    ) -> Result<InsertDataResponse, Box<dyn Error>>;
+    async fn resolve_failed_event(
+        &self,
+        event_id: Uuid
+    ) -> Result<UpdateDataResponse, Box<dyn Error>>;
+    async fn update_retry_time(
+        &self,
+        event_id: Uuid,
+        new_retry_time: DateTime<Utc>
+    ) -> Result<UpdateDataResponse, Box<dyn Error>>;
+}
+
+trait ServiceDatabase {
+
 }
 
 pub enum InsertDataResponse {

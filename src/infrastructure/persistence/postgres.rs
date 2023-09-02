@@ -5,6 +5,7 @@ use crate::{common::types::VentrixEvent, domain::models::service::Service};
 use std::error::Error;
 
 use async_trait::async_trait;
+use chrono::{DateTime, Utc, Duration};
 use sqlx::PgPool;
 use uuid::Uuid;
 
@@ -115,6 +116,25 @@ impl Database for PostgresDatabase {
         }
     }
 
+    async fn add_failed_event(
+        &self,
+        event: &VentrixEvent
+    ) -> Result<InsertDataResponse, Box<dyn Error>> {
+        let uuid = Uuid::new_v4();
+        let retry_time = Utc::now() + Duration::minutes(1);
+        match sqlx::query(
+            "INSERT INTO failed_events (id, event_id, retry_time) VALUES ($1, $2, $3)",
+            )
+            .bind(uuid)
+            .bind(event.id)
+            .bind(retry_time)
+            .execute(&self.pool)
+            .await {
+                Ok(response) => Ok(InsertDataResponse::Postgres(response.rows_affected())),
+                Err(err) => Err(Box::new(err))
+            }
+    }
+
     async fn fulfil_event(
         &self,
         event: &VentrixEvent,
@@ -189,6 +209,29 @@ impl Database for PostgresDatabase {
         {
             Ok(schema) => Ok(schema),
             Err(err) => Err(Box::new(err)),
+        }
+    }
+
+    async fn resolve_failed_event(&self, event_id: Uuid) -> Result<UpdateDataResponse, Box<dyn Error>> {
+        match sqlx::query("UPDATE failed_events SET resolved_at = NOW() WHERE event_id = $1")
+        .bind(event_id)
+        .execute(&self.pool)
+        .await {
+            Ok(response) => Ok(UpdateDataResponse::Postgres(response.rows_affected())),
+            Err(err) => Err(Box::new(err))
+        }
+    }
+
+    async fn update_retry_time(&self, event_id: Uuid, new_retry_time: DateTime<Utc>) -> Result<UpdateDataResponse, Box<dyn Error>> {
+        match sqlx::query(
+            "UPDATE failed_events SET retry_time = $1 WHERE event_id = $2"
+        )
+        .bind(new_retry_time)
+        .bind(event_id)
+        .execute(&self.pool)
+                .await {
+                Ok(response) => Ok(UpdateDataResponse::Postgres(response.rows_affected())),
+                Err(err) => Err(Box::new(err))
         }
     }
 }
