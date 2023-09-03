@@ -1,5 +1,5 @@
 use crate::common::types::{
-    EventFulfillmentDetails, FailedEventRow, ListenToEventReq, PayloadSchema, RetryDetails,
+    EventFulfillmentDetails, FailedEventRow, ListenToEventReq, PayloadSchema,
 };
 use crate::domain::models::service::RegisterServiceRequest;
 use crate::infrastructure::persistence::NewEventTypeRequest;
@@ -250,28 +250,10 @@ impl Database for PostgresDatabase {
         match sqlx::query_as::<_, FailedEventRow>(
             r#"SELECT e.id, e.event_type, e.payload, f.retry_time, f.retries FROM events_published AS e INNER JOIN failed_events as f ON e.id = f.event_id WHERE f.retries < 3 AND f.retry_time < NOW()"#
         ).fetch_all(&self.pool).await {
-                Ok(rows) => {
-                    let mut event_vec: Vec<VentrixEvent> = Vec::new();
-                    for failed_event in rows.iter() {
-                        event_vec.push(
-                            VentrixEvent { 
-                                id: failed_event.id, 
-                                event_type: failed_event.event_type.clone(), 
-                                payload: failed_event.payload.clone(), 
-                                retry_details: Some(
-                                    RetryDetails {
-                                        retry_time: failed_event.retry_time,
-                                        retry_count: failed_event.retries
-                                    }
-                                ) 
-                            }
-                        )
-                    }
-                    Ok(event_vec)
+                Ok(failed_event_rows) => {
+                    Ok(failed_event_rows.iter().map(VentrixEvent::from_failed_event).collect())
                 },
-                Err(err) => {
-                    Err(Box::new(err))
-                }
+                Err(err) => Err(Box::new(err))
             }
     }
 }

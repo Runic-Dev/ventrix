@@ -1,21 +1,26 @@
 use std::{collections::HashMap, fmt::Display};
 
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize, Serializer, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 use uuid::Uuid;
 
 pub fn datetime_utc_to_string<S>(date: &DateTime<Utc>, serializer: S) -> Result<S::Ok, S::Error>
 where
-    S: Serializer
+    S: Serializer,
 {
     let s = date.to_rfc3339();
     serializer.serialize_str(&s)
 }
 
-pub fn string_to_datetime_utc<'de, D>(deserialize: D) -> Result<DateTime<Utc>, D::Error> where D: Deserializer<'de> {
+pub fn string_to_datetime_utc<'de, D>(deserialize: D) -> Result<DateTime<Utc>, D::Error>
+where
+    D: Deserializer<'de>,
+{
     let s = String::deserialize(deserialize)?;
-    Ok(DateTime::parse_from_rfc3339(&s).unwrap().with_timezone(&Utc))
+    Ok(DateTime::parse_from_rfc3339(&s)
+        .unwrap()
+        .with_timezone(&Utc))
 }
 
 #[derive(Deserialize, Serialize, Clone, Debug)]
@@ -34,6 +39,20 @@ pub struct VentrixEvent {
     pub event_type: String,
     pub payload: String,
     pub retry_details: Option<RetryDetails>,
+}
+
+impl VentrixEvent {
+    pub fn from_failed_event(failed_event: &FailedEventRow) -> Self {
+        Self {
+            id: failed_event.id,
+            event_type: failed_event.event_type.clone(),
+            payload: failed_event.payload.clone(),
+            retry_details: Some(RetryDetails {
+                retry_count: failed_event.retries,
+                retry_time: failed_event.retry_time,
+            }),
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -154,5 +173,5 @@ pub struct FailedEventRow {
     pub event_type: String,
     pub payload: String,
     pub retry_time: DateTime<Utc>,
-    pub retries: i16
+    pub retries: i16,
 }
