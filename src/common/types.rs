@@ -23,7 +23,7 @@ where
         .with_timezone(&Utc))
 }
 
-#[derive(Deserialize, Serialize, Clone, Debug)]
+#[derive(Deserialize, Serialize, Clone, Copy, Debug)]
 pub struct RetryDetails {
     pub retry_count: i16,
     #[serde(

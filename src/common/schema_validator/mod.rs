@@ -139,10 +139,8 @@ impl SchemaProperty {
 }
 
 pub fn is_valid_property_def(value: &mut Value) -> Result<Value, InvalidPropertyDef> {
-    value.get("type").ok_or_else(|| {
-        InvalidPropertyDef {
-            message: String::from("The payload_defintion needs to be defined as object")
-        }
+    value.get("type").ok_or_else(|| InvalidPropertyDef {
+        message: String::from("The payload_defintion needs to be defined as object"),
     })?;
 
     let mut properties = get_properties_as_map(value)?;
@@ -186,7 +184,10 @@ pub fn is_valid_property_def(value: &mut Value) -> Result<Value, InvalidProperty
 #[cfg(test)]
 pub mod tests {
     use serde_json::{json, Value};
-    use valico::{json_dsl::{self, Builder}, json_schema::Scope};
+    use valico::{
+        json_dsl::{self, Builder},
+        json_schema::Scope,
+    };
 
     use crate::common::types::NewEventTypeRequest;
 
@@ -252,7 +253,8 @@ pub mod tests {
 
         let payload_str = json!({
             "name": "John Rustsworth"
-        }).to_string();
+        })
+        .to_string();
 
         let payload: Value = serde_json::from_str(&payload_str).unwrap();
         let validation = schema.validate(&payload);

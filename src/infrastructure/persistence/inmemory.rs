@@ -125,7 +125,7 @@ impl Database for InMemoryDatabase {
 
     async fn register_service_for_event_type(
         &self,
-        listen_to_event_req: &ListenToEventReq
+        listen_to_event_req: &ListenToEventReq,
     ) -> Result<InsertDataResponse, Box<dyn Error>> {
         let mut service_to_event_type_lock = self.event_type_to_service.lock().await;
         let service_register_lock = self.service_register.lock().await;
@@ -146,19 +146,33 @@ impl Database for InMemoryDatabase {
         todo!()
     }
 
-    async fn get_schema_for_event_type(&self, _event_type: &str) -> Result<PayloadSchema, Box<dyn Error>> {
+    async fn get_schema_for_event_type(
+        &self,
+        _event_type: &str,
+    ) -> Result<PayloadSchema, Box<dyn Error>> {
         todo!()
     }
 
-    async fn resolve_failed_event(&self, _event_id: Uuid) -> Result<UpdateDataResponse, Box<dyn Error>> {
+    async fn resolve_failed_event(
+        &self,
+        _event_id: Uuid,
+    ) -> Result<UpdateDataResponse, Box<dyn Error>> {
         todo!()
     }
 
-    async fn add_failed_event(&self, _event: &VentrixEvent) -> Result<InsertDataResponse, Box<dyn Error>> {
+    async fn add_failed_event(
+        &self,
+        _event: &VentrixEvent,
+    ) -> Result<InsertDataResponse, Box<dyn Error>> {
         todo!()
     }
 
-    async fn update_retry_time(&self, _event_id: Uuid, _new_retry_time: DateTime<Utc>, _retries: i16) -> Result<UpdateDataResponse, Box<dyn Error>> {
+    async fn update_retry_time(
+        &self,
+        _event_id: Uuid,
+        _new_retry_time: DateTime<Utc>,
+        _retries: i16,
+    ) -> Result<UpdateDataResponse, Box<dyn Error>> {
         todo!()
     }
     async fn get_failed_events(&self) -> Result<Vec<VentrixEvent>, Box<dyn Error + Sync + Send>> {

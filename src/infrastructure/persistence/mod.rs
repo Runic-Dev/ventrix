@@ -2,12 +2,14 @@ pub mod inmemory;
 pub mod postgres;
 
 use async_trait::async_trait;
-use chrono::{Utc, DateTime};
-use uuid::Uuid;
+use chrono::{DateTime, Utc};
 use std::{error::Error, fmt::Debug};
+use uuid::Uuid;
 
 use crate::{
-    common::types::{NewEventTypeRequest, VentrixEvent, PayloadSchema, ListenToEventReq, EventFulfillmentDetails},
+    common::types::{
+        EventFulfillmentDetails, ListenToEventReq, NewEventTypeRequest, PayloadSchema, VentrixEvent,
+    },
     domain::models::service::{RegisterServiceRequest, Service},
 };
 
@@ -36,7 +38,7 @@ pub trait Database: Debug + Send + Sync {
     ) -> Result<UpdateDataResponse, Box<dyn Error>>;
     async fn register_service_for_event_type(
         &self,
-        listen_to_event_req: &ListenToEventReq
+        listen_to_event_req: &ListenToEventReq,
     ) -> Result<InsertDataResponse, Box<dyn Error>>;
     async fn get_service_by_event_type(
         &self,
@@ -48,20 +50,19 @@ pub trait Database: Debug + Send + Sync {
     ) -> Result<PayloadSchema, Box<dyn Error>>;
     async fn add_failed_event(
         &self,
-        event: &VentrixEvent
+        event: &VentrixEvent,
     ) -> Result<InsertDataResponse, Box<dyn Error>>;
     async fn resolve_failed_event(
         &self,
-        event_id: Uuid
+        event_id: Uuid,
     ) -> Result<UpdateDataResponse, Box<dyn Error>>;
     async fn update_retry_time(
         &self,
         event_id: Uuid,
         new_retry_time: DateTime<Utc>,
-        retries: i16
+        retries: i16,
     ) -> Result<UpdateDataResponse, Box<dyn Error>>;
-    async fn get_failed_events(&self) -> 
-        Result<Vec<VentrixEvent>, Box<dyn Error + Sync + Send>>;
+    async fn get_failed_events(&self) -> Result<Vec<VentrixEvent>, Box<dyn Error + Sync + Send>>;
 }
 
 pub enum InsertDataResponse {

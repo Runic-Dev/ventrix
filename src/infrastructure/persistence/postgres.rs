@@ -1,4 +1,4 @@
-use crate::common::helpers::{err_to_boxed_send_sync, err_to_boxed};
+use crate::common::helpers::{err_to_boxed, err_to_boxed_send_sync};
 use crate::common::types::{
     EventFulfillmentDetails, FailedEventRow, ListenToEventReq, PayloadSchema,
 };
@@ -95,16 +95,14 @@ impl Database for PostgresDatabase {
         &self,
         event: &VentrixEvent,
     ) -> Result<InsertDataResponse, Box<dyn Error>> {
-        sqlx::query(
-            "INSERT INTO events_published (id, event_type, payload) VALUES ($1, $2, $3)",
-        )
-        .bind(event.id)
-        .bind(event.event_type.clone())
-        .bind(event.payload.clone())
-        .execute(&self.pool)
-        .await
-        .map_err(err_to_boxed)
-        .map(|response| InsertDataResponse::Postgres(response.rows_affected()))
+        sqlx::query("INSERT INTO events_published (id, event_type, payload) VALUES ($1, $2, $3)")
+            .bind(event.id)
+            .bind(event.event_type.clone())
+            .bind(event.payload.clone())
+            .execute(&self.pool)
+            .await
+            .map_err(err_to_boxed)
+            .map(|response| InsertDataResponse::Postgres(response.rows_affected()))
     }
 
     async fn add_failed_event(
@@ -113,16 +111,14 @@ impl Database for PostgresDatabase {
     ) -> Result<InsertDataResponse, Box<dyn Error>> {
         let uuid = Uuid::new_v4();
         let retry_time = Utc::now() + Duration::minutes(1);
-        sqlx::query(
-            "INSERT INTO failed_events (id, event_id, retry_time) VALUES ($1, $2, $3)",
-        )
-        .bind(uuid)
-        .bind(event.id)
-        .bind(retry_time)
-        .execute(&self.pool)
-        .await
-        .map_err(err_to_boxed)
-        .map(|response| InsertDataResponse::Postgres(response.rows_affected()))
+        sqlx::query("INSERT INTO failed_events (id, event_id, retry_time) VALUES ($1, $2, $3)")
+            .bind(uuid)
+            .bind(event.id)
+            .bind(retry_time)
+            .execute(&self.pool)
+            .await
+            .map_err(err_to_boxed)
+            .map(|response| InsertDataResponse::Postgres(response.rows_affected()))
     }
 
     async fn fulfil_event(
@@ -208,7 +204,7 @@ impl Database for PostgresDatabase {
         &self,
         event_id: Uuid,
         new_retry_time: DateTime<Utc>,
-        retries: i16
+        retries: i16,
     ) -> Result<UpdateDataResponse, Box<dyn Error>> {
         sqlx::query("UPDATE failed_events SET retry_time = $1, retries = $2 WHERE event_id = $3")
             .bind(new_retry_time)
