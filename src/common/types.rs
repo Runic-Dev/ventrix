@@ -42,11 +42,11 @@ pub struct VentrixEvent {
 }
 
 impl VentrixEvent {
-    pub fn from_failed_event(failed_event: &FailedEventRow) -> Self {
+    pub fn from_failed_event(failed_event: FailedEventRow) -> Self {
         Self {
             id: failed_event.id,
-            event_type: failed_event.event_type.clone(),
-            payload: failed_event.payload.clone(),
+            event_type: failed_event.event_type,
+            payload: failed_event.payload,
             retry_details: Some(RetryDetails {
                 retry_count: failed_event.retries,
                 retry_time: failed_event.retry_time,

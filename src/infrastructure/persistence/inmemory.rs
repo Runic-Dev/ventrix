@@ -142,7 +142,7 @@ impl Database for InMemoryDatabase {
     async fn get_service_by_event_type(
         &self,
         _event_type: &str,
-    ) -> Result<Vec<EventFulfillmentDetails>, Box<dyn Error + Send>> {
+    ) -> Result<Vec<EventFulfillmentDetails>, Box<dyn Error + Sync + Send>> {
         todo!()
     }
 

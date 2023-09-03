@@ -41,7 +41,7 @@ pub trait Database: Debug + Send + Sync {
     async fn get_service_by_event_type(
         &self,
         event_type: &str,
-    ) -> Result<Vec<EventFulfillmentDetails>, Box<dyn Error + Send>>;
+    ) -> Result<Vec<EventFulfillmentDetails>, Box<dyn Error + Sync + Send>>;
     async fn get_schema_for_event_type(
         &self,
         event_type: &str,
