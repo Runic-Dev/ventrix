@@ -10,7 +10,7 @@ env:
   CARGO_TERM_COLOR: always
   SQLX_VERSION: 0.6.2
   SQLX_FEATURES: "rustls,postgres"
-  IMAGE_NAME: your-image-name
+  IMAGE_NAME: ventrix-app
   REGISTRY_URL: ${{ secrets.ACR_URL }}
 
 jobs:
@@ -53,7 +53,14 @@ jobs:
       - run: cargo install cargo-tarpaulin
       - run: cargo tarpaulin --verbose --workspace
 
+      # Login to ACR
+      - name: Login to ACR
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ env.REGISTRY_URL }}
+          username: ${{ secrets.REGISTRY_USERNAME }}
+          password: ${{ secrets.REGISTRY_PASSWORD }}
+
       # Build and Push to ACR
-      - run: echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login ${{ env.REGISTRY_URL }} -u ${{ secrets.REGISTRY_USERNAME }} --password-stdin
       - run: docker build -t ${{ env.REGISTRY_URL }}/${{ env.IMAGE_NAME }}:${{ github.sha }} .
       - run: docker push ${{ env.REGISTRY_URL }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
