@@ -1,0 +1,59 @@
+name: Build, test, image, push
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+  SQLX_VERSION: 0.6.2
+  SQLX_FEATURES: "rustls,postgres"
+  IMAGE_NAME: your-image-name
+  REGISTRY_URL: yourregistry.azurecr.io
+
+jobs:
+  all-in-one:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # Common Setup
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: sqlx-${{ env.SQLX_VERSION }}
+      - run: sudo apt-get install libpq-dev -y
+      - run: cargo install sqlx-cli --version=${{ env.SQLX_VERSION }} --features ${{ env.SQLX_FEATURES }} --no-default-features --locked
+      - run: SKIP_DOCKER=true ./scripts/init_db.sh
+
+      # Test
+      - run: cargo test
+
+      # Fmt
+      - run: cargo fmt --check
+
+      # Clippy
+      - run: cargo clippy -- -D warnings
+
+      # Coverage
+      - run: cargo install cargo-tarpaulin
+      - run: cargo tarpaulin --verbose --workspace
+
+      # Build and Push to ACR
+      - run: echo "${{ secrets.REGISTRY_PASSWORD }}" | docker login ${{ env.REGISTRY_URL }} -u ${{ secrets.REGISTRY_USERNAME }} --password-stdin
+      - run: docker build -t ${{ env.REGISTRY_URL }}/${{ env.IMAGE_NAME }}:${{ github.sha }} .
+      - run: docker push ${{ env.REGISTRY_URL }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
