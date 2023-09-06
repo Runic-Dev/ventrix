@@ -11,7 +11,7 @@ env:
   SQLX_VERSION: 0.6.2
   SQLX_FEATURES: "rustls,postgres"
   IMAGE_NAME: your-image-name
-  REGISTRY_URL: yourregistry.azurecr.io
+  REGISTRY_URL: ${{ secrets.ACR_URL }}
 
 jobs:
   all-in-one:
