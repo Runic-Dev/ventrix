@@ -1,5 +1,5 @@
 -- Add up migration script here
-CREATE TABLE event_type_to_service (
+CREATE TABLE IF NOT EXISTS event_type_to_service (
     id UUID PRIMARY KEY,
     event_type_id UUID,
     service_id UUID,

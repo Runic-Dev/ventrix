@@ -1,5 +1,5 @@
 -- Add up migration script here
-CREATE TABLE services (
+CREATE TABLE IF NOT EXISTS services (
   id UUID PRIMARY KEY,
   name VARCHAR(255) UNIQUE NOT NULL,
   url VARCHAR(255) NOT NULL,

@@ -1,5 +1,5 @@
 -- Add up migration script here
-CREATE TABLE events_published (
+CREATE TABLE IF NOT EXISTS events_published (
   id UUID PRIMARY KEY,
   event_type VARCHAR(255),
   payload VARCHAR(255),

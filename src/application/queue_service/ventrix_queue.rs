@@ -87,6 +87,7 @@ impl VentrixQueue {
             Self::event_processor(receiver, event_processor_db).await;
         });
         let failed_events_process_db = web::Data::clone(&self.database);
+
         tokio::spawn(async move {
             loop {
                 if let Ok(failed_events) = failed_events_process_db.get_failed_events().await.map_err(|err| {
@@ -94,7 +95,7 @@ impl VentrixQueue {
                 }) {
                     handle_failed_events(failed_events, &failed_event_sender).await;
                 };
-                
+
                 tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
             }
         });

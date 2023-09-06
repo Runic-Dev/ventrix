@@ -6,6 +6,8 @@ services:
     environment:
       POSTGRES_PASSWORD: password
       POSTGRES_DB: ventrix
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
     ports:
       - "5432:5432"
   app:

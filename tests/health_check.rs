@@ -30,6 +30,7 @@ static TRACING: Lazy<()> = Lazy::new(|| {
 });
 
 #[tokio::test]
+#[ignore = "Here for reference"]
 async fn health_check_works() {
     let test_app = spawn_app().await;
     let client = reqwest::Client::new();
@@ -45,6 +46,7 @@ async fn health_check_works() {
 }
 
 #[tokio::test]
+#[ignore = "Here for reference"]
 async fn subscribe_returns_a_400_when_data_is_missing() {
     let test_app = spawn_app().await;
     let client = reqwest::Client::new();

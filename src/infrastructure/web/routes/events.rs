@@ -55,8 +55,7 @@ pub async fn register_new_event_type(
                             "description" : event_type_to_register.description,
                             "payload_description": event_type_to_register.payload_definition
                         }
-                    )
-                    .to_string();
+                    );
                     HttpResponse::Created().json(json_response)
                 }
                 Err(err) => HttpResponse::BadRequest().json(err.to_string()),
@@ -77,7 +76,6 @@ pub async fn listen_to_event(
     listen_request: web::Json<ListenToEventReq>,
     database: web::Data<dyn Database>,
 ) -> HttpResponse {
-    // TODO: Check that the given endpoint exists before being added
     match database
         .get_ref()
         .register_service_for_event_type(&listen_request)
@@ -89,12 +87,23 @@ pub async fn listen_to_event(
                 &listen_request.service_name, &listen_request.event_type
             ),
         }),
-        Err(err) => HttpResponse::Ok().json(ListenToEventResponse {
-            message: format!(
-                "Failed subscribing service {} to event type {}. Error from database: {}",
-                &listen_request.service_name, &listen_request.event_type, err
-            ),
-        }),
+        Err(err) => {
+            let err_string = err.to_string();
+            match err.downcast::<sqlx::Error>().is_ok_and(|sqlx_err| {
+                if let sqlx::Error::RowNotFound = *sqlx_err {
+                    return true;
+                }
+                false
+            }) {
+                true => {
+                    let response = json!({
+                        "message": "RowNotFound error returned from server. Is the event_type in your request spelt correctly?"
+                    });
+                    HttpResponse::BadRequest().json(response)
+                }
+                false => HttpResponse::InternalServerError().json(err_string),
+            }
+        }
     }
 }
 

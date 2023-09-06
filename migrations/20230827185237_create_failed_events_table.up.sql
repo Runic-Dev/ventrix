@@ -1,5 +1,5 @@
 -- Add up migration script here
-CREATE TABLE failed_events (
+CREATE TABLE IF NOT EXISTS failed_events (
     id UUID PRIMARY KEY,
     event_id UUID REFERENCES events_published (id),
     retry_time TIMESTAMPTZ NOT NULL,
